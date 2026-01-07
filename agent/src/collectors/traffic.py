@@ -11,6 +11,7 @@ from scapy.layers.inet6 import IPv6
 from scapy.packet import Packet
 from scapy.sendrecv import sniff
 
+from src.config import settings
 from src.models.traffic import TCPFlags, TrafficRecord
 
 # Networks to exclude from capture
@@ -124,6 +125,11 @@ class TrafficCollector:
         # Check for excluded networks
         if _is_excluded_ip(src_ip) or _is_excluded_ip(dst_ip):
             return None
+
+        # Filter by target IP if configured (e.g., only host-VM traffic)
+        if settings.target_ip:
+            if src_ip != settings.target_ip and dst_ip != settings.target_ip:
+                return None
 
         # Extract transport layer (TCP or UDP)
         if packet.haslayer(TCP):

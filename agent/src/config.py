@@ -23,15 +23,18 @@ class Settings(BaseSettings):
     interface: str | None = None
     """Network interface to capture on. None = all interfaces."""
 
+    target_ip: str | None = None
+    """Filter traffic to/from this IP only (e.g., host IP). None = capture all traffic."""
+
     # Logging settings
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     """Logging level for agent logs (output to stderr)."""
 
     # Output settings
-    output_mode: Literal["stdout", "file", "none"] = "stdout"
+    output_mode: Literal["stdout", "file", "none"] = "file"
     """Where to output captured traffic records."""
 
-    output_file: str | None = None
+    output_file: str = "./traffic.jsonl"
     """File path for traffic records when output_mode=file."""
 
 
