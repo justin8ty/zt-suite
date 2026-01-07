@@ -1,12 +1,16 @@
 # Zero-Trust Security Suite (ZT Suite)
 
-A software-only zero-trust security platform for SME environments.
+An FYP zero-trust security implementation.
 
 ## Prerequisites
 
-### Windows (for packet capture)
+### Windows
 
-Install [Npcap](https://npcap.com/) - required for Scapy packet capture on Windows
+Wireshark is installed for dependency `npcap`.
+
+```
+choco install wireshark
+```
 
 ### Linux
 
@@ -31,6 +35,7 @@ See [CHECKLIST.md](./CHECKLIST.md) for implementation progress.
 ## Technicals
 
 batching:
+
 Batch interval: 60s default
 Soft limit: 50,000 records
 Hard limit: 100,000 records
