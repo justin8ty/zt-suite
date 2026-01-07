@@ -71,7 +71,7 @@ def _flush_batch(
         logger.info(f"Flushing {len(batch)} records ({flush_type})")
 
         # Output batch as JSON array
-        batch_json = [record.model_dump() for record in batch]
+        batch_json = [record.model_dump(mode="json") for record in batch]
         json_output = json.dumps(batch_json)
 
         if settings.output_mode == "stdout":
