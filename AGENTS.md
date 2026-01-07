@@ -338,7 +338,7 @@ class TestAuthService:
 1. **Read PRD.md first** for product context and requirements
 2. **Prioritize security** - this is a security product
 3. **Follow phase plan** - P0 (IAM) -> P1 (Posture) -> P2 (Anomaly) -> P3 (Polish)
-4. **Write tests** for all new functionality
+4. **Defer tests** - write tests after entire project implementation is complete
 5. **Use strict typing** - mypy strict for Python, TypeScript strict for frontend
 6. **Validate inputs** at all API boundaries
 7. **Log structured JSON** with request IDs via structlog
