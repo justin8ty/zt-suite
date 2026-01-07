@@ -141,9 +141,9 @@ This checklist tracks implementation progress against PRD requirements.
 ## Phase 2 - Optimization (Anomaly Detection)
 
 ### Traffic Capture (Agent)
-- [ ] Scapy packet capture implementation
-- [ ] Filter for TCP/UDP traffic
-- [ ] Extract metadata (src/dst IP, ports, protocol, size, flags)
+- [x] Scapy packet capture implementation
+- [x] Filter for TCP/UDP traffic
+- [x] Extract metadata (src/dst IP, ports, protocol, size, flags)
 - [ ] Batch traffic records (30-60s intervals)
 - [ ] POST traffic data to backend
 
