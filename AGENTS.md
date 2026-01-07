@@ -145,7 +145,16 @@ zt-suite/
 │
 ├── agent/
 │   └── src/
-│       └── collectors/         # Posture and traffic collectors
+│       ├── collectors/         # Posture and traffic collectors
+│       ├── ml/                 # ML inference
+│       │   └── anomaly_model.joblib  # Pre-trained model (shipped with agent)
+│       └── services/           # Feature engineering, alerting
+│
+├── ml/                         # ML training (separate from agent runtime)
+│   ├── data/                   # Training datasets (gitignored)
+│   ├── notebooks/              # Exploration notebooks
+│   ├── training/               # Training scripts
+│   └── artifacts/              # Trained models (copied to agent/src/ml/)
 │
 └── scripts/                    # Dev/deploy helper scripts
 ```
@@ -249,34 +258,103 @@ This is a security product - apply extra rigor:
 
 ---
 
-## Traffic Capture Strategy
+## Traffic Capture & Anomaly Detection Strategy
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 Endpoint Agent Packet Capture                   │
+│              Endpoint Agent - Edge Processing Model             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Scapy sniff on network interface (requires root)               │
+│  AGENT (runs on each endpoint)                                  │
+│  ─────────────────────────────                                  │
 │                                                                 │
-│  Captured metadata:                                             │
-│  - Source/Destination IP                                        │
-│  - Source/Destination Port                                      │
-│  - Protocol (TCP/UDP)                                           │
-│  - Packet size                                                  │
-│  - Timestamp                                                    │
-│  - TCP flags (SYN, ACK, FIN, RST)                               │
+│  1. CAPTURE (Scapy)                                             │
+│     - Sniff on network interface (requires root)                │
+│     - Filter: TCP/UDP only (BPF filter)                         │
+│     - Exclude: localhost, link-local, broadcast, multicast      │
+│     - Extract metadata (no payload):                            │
+│       • Source/Destination IP                                   │
+│       • Source/Destination Port                                 │
+│       • Protocol (TCP/UDP)                                      │
+│       • Packet size                                             │
+│       • Timestamp                                               │
+│       • TCP flags (SYN, ACK, FIN, RST, PSH, URG)                │
 │                                                                 │
-│  NOT captured: Payload content                                  │
+│  2. BATCH (60s intervals)                                       │
+│     - Accumulate traffic records in memory                      │
+│     - Emergency flush at 50k records                            │
 │                                                                 │
-│  Batched every 30-60s → POST /api/traffic                       │
+│  3. FEATURE ENGINEERING (per batch)                             │
+│     - Packets per minute                                        │
+│     - Bytes per minute                                          │
+│     - Unique destination IP count                               │
+│     - Unique destination port count                             │
+│     - Port distribution (well-known vs ephemeral)               │
+│     - TCP flag ratios (SYN/FIN/RST patterns)                    │
+│     - Average packet size                                       │
 │                                                                 │
-│  Backend feature engineering:                                   │
-│  - Packets/bytes per minute                                     │
-│  - Unique destination count                                     │
-│  - Port distribution                                            │
-│  - Connection pattern ratios                                    │
+│  4. ANOMALY DETECTION (local inference)                         │
+│     - Load pre-trained Isolation Forest model                   │
+│     - Score feature vector → anomaly score                      │
+│     - If score > threshold → generate alert                     │
 │                                                                 │
-│  Anomaly detection via Isolation Forest                         │
+│  5. REPORT TO BACKEND                                           │
+│     - POST /api/traffic (batch of traffic records)              │
+│     - POST /api/alerts (if anomaly detected)                    │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  BACKEND (central server)                                       │
+│  ────────────────────────                                       │
+│                                                                 │
+│  - Store traffic records (for dashboard charts/history)         │
+│  - Store alerts (for alert management workflow)                 │
+│  - Serve REST API for dashboard queries                         │
+│  - NO feature engineering (done by agent)                       │
+│  - NO ML inference (done by agent)                              │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  DASHBOARD (React frontend)                                     │
+│  ──────────────────────────                                     │
+│                                                                 │
+│  - View/acknowledge alerts                                      │
+│  - Traffic visualization (time-series charts)                   │
+│  - Device status overview                                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ML Training Strategy
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                Pre-Trained Model Approach                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  TRAINING (one-time, offline)                                   │
+│  ────────────────────────────                                   │
+│                                                                 │
+│  1. Dataset: Public labeled traffic dataset                     │
+│     - CICIDS2017/2018 (recommended)                             │
+│     - UNSW-NB15                                                 │
+│     - CTU-13 (botnet-focused)                                   │
+│                                                                 │
+│  2. Feature extraction: Same features as agent                  │
+│     - Packets/bytes per minute                                  │
+│     - Unique destinations                                       │
+│     - Port distribution                                         │
+│     - TCP flag ratios                                           │
+│                                                                 │
+│  3. Model: Isolation Forest (scikit-learn)                      │
+│     - Train on benign traffic (normal baseline)                 │
+│     - Malicious traffic = anomalies (high scores)               │
+│                                                                 │
+│  4. Output: anomaly_model.joblib                                │
+│     - Shipped with agent package                                │
+│     - No runtime model updates                                  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```

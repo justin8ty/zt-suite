@@ -80,21 +80,28 @@
 * Pre-access compliance evaluation
 * Periodic posture re-validation
 
-#### 3. Network Traffic Monitoring
+#### 3. Network Traffic Monitoring & Anomaly Detection
 
 * Internal traffic capture (simulated network between VMs and host)
-* Session metadata extraction
-* Feature engineering for anomaly detection
-* Traffic aggregation by user, role, device
+* Session metadata extraction (no payload capture)
+* Agent-side feature engineering per batch:
+  - Packets/bytes per minute
+  - Unique destination count
+  - Port distribution analysis
+  - TCP flag ratios
+* Agent-side anomaly detection using pre-trained Isolation Forest
+* Traffic and alert reporting to central backend
 
 #### 4. Anomaly Detection Engine
 
-* Statistical or ML-based baseline modeling
+* Pre-trained Isolation Forest model (trained on public labeled dataset)
+* Edge-based detection (runs on agent, not backend)
 * Detection of:
 
   * Brute-force attempts
   * Abnormal access frequency
   * Data exfiltration patterns
+  * Port scanning behavior
 * Configurable detection thresholds
 * Alert generation with severity levels
 
@@ -149,11 +156,12 @@
 
 ### 3.3 Security Monitoring Flow
 
-1. Traffic ingested
-2. Features extracted
-3. Anomaly model evaluation
-4. Alert generated
-5. Dashboard notification
+1. Agent captures traffic
+2. Agent extracts features (per 60s batch)
+3. Agent runs anomaly detection (local inference)
+4. If anomaly: Agent generates alert
+5. Agent POSTs traffic batch + alerts to backend
+6. Dashboard displays alerts and traffic history
 
 ---
 
@@ -208,8 +216,10 @@ flowchart LR
 ### 6.1 Architecture Overview
 
 * Modular, service-oriented design
-* Central backend with REST APIs
+* Central backend with REST APIs (storage and dashboard serving)
 * Web-based frontend dashboard
+* Edge-based processing: Agents perform feature engineering and ML inference locally
+* Pre-trained ML model shipped with agent (no runtime training)
 * Simulated endpoints and network
 
 ### 6.2 Technology Stack
@@ -240,6 +250,8 @@ flowchart LR
 
 * Cooperative posture reporting → clearly documented trust assumptions
 * No hardware-backed attestation → simulation scope only
+* Pre-trained ML model on public dataset → may not cover all attack patterns
+* No cross-device correlation → agent-based detection is per-endpoint only
 
 ---
 

@@ -144,38 +144,45 @@ This checklist tracks implementation progress against PRD requirements.
 - [x] Scapy packet capture implementation
 - [x] Filter for TCP/UDP traffic
 - [x] Extract metadata (src/dst IP, ports, protocol, size, flags)
-- [x] Batch traffic records (30-60s intervals)
+- [x] Batch traffic records (60s intervals)
 - [ ] POST traffic data to backend
 
-### Backend Traffic Module
-- [ ] Traffic record model (id, device_id, src_ip, dst_ip, src_port, dst_port, protocol, size, timestamp)
-- [ ] Traffic ingestion endpoint (POST /api/traffic)
-- [ ] Traffic aggregation service
-- [ ] Get traffic endpoint (GET /api/traffic) - with filters
-
-### Feature Engineering
+### Feature Engineering (Agent)
 - [ ] Packets per minute calculation
 - [ ] Bytes per minute calculation
-- [ ] Unique destination count
-- [ ] Port distribution analysis
-- [ ] Connection pattern ratios (SYN/FIN/RST)
-- [ ] Feature vector generation per time window
+- [ ] Unique destination IP count
+- [ ] Unique destination port count
+- [ ] Port distribution analysis (well-known vs ephemeral)
+- [ ] TCP flag ratios (SYN/FIN/RST patterns)
+- [ ] Average packet size
+- [ ] Feature vector generation per batch
 
-### Anomaly Detection Model
-- [ ] Isolation Forest model implementation
-- [ ] Training script with baseline data
-- [ ] Model persistence (joblib)
-- [ ] Model loading on startup
-- [ ] Inference service (score traffic features)
+### ML Model Training (One-Time, Offline)
+- [ ] Download and prepare public dataset
+- [ ] Extract same features as agent from dataset
+- [ ] Train Isolation Forest on benign traffic
+- [ ] Validate model on labeled malicious samples
+- [ ] Tune anomaly threshold for acceptable false-positive rate
+- [ ] Export model to agent/src/ml/anomaly_model.joblib
+
+### Anomaly Detection (Agent)
+- [ ] Load pre-trained Isolation Forest model on startup
+- [ ] Run inference on feature vectors (per batch)
 - [ ] Anomaly threshold configuration
+- [ ] Generate alert when anomaly detected
+- [ ] POST alerts to backend
+
+### Backend Traffic Module (Storage Only)
+- [ ] Traffic record model (id, device_id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol, size)
+- [ ] Traffic ingestion endpoint (POST /api/traffic)
+- [ ] Get traffic endpoint (GET /api/traffic) - with filters
 
 ### Alert System
 - [ ] Alert model (id, type, severity, device_id, description, timestamp, acknowledged)
-- [ ] Alert generation on anomaly detection
-- [ ] Severity levels (low, medium, high, critical)
+- [ ] Alert ingestion endpoint (POST /api/alerts)
 - [ ] Get alerts endpoint (GET /api/alerts)
 - [ ] Acknowledge alert endpoint (PATCH /api/alerts/{id})
-- [ ] Brute-force detection (failed login threshold)
+- [ ] Severity levels (low, medium, high, critical)
 
 ### Dashboard Updates
 - [ ] Alerts list page
