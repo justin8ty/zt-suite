@@ -1,17 +1,28 @@
 """ZT Suite Traffic Capture Agent entry point."""
 
+import json
 import logging
 import signal
 import sys
-from threading import Event
-from typing import TextIO
+from queue import Empty, Queue
+from threading import Event, Lock, Timer
+from typing import Callable, Final, TextIO
 
 from src.collectors.traffic import TrafficCollector
 from src.config import settings
 from src.models.traffic import TrafficRecord
 
+# Buffer size limits
+BATCH_SIZE_SOFT_LIMIT: Final[int] = 50_000  # Emergency flush trigger
+BATCH_SIZE_HARD_LIMIT: Final[int] = 100_000  # Safety net (should never hit)
+
 # Shutdown event for graceful termination
 _shutdown_event = Event()
+
+# Batch buffer and timer
+_record_buffer: Queue[TrafficRecord] = Queue()
+_flush_timer: Timer | None = None
+_flush_lock = Lock()
 
 
 def _setup_logging() -> logging.Logger:
@@ -31,21 +42,86 @@ def _setup_logging() -> logging.Logger:
     return logger
 
 
+def _flush_batch(
+    logger: logging.Logger,
+    output_file: TextIO | None,
+    emergency: bool = False,
+) -> None:
+    """Flush accumulated records to output.
+
+    Args:
+        logger: Logger instance
+        output_file: File handle for output (if mode=file)
+        emergency: True if triggered by buffer overflow
+    """
+    with _flush_lock:  # Prevent concurrent flushes
+        # Collect all buffered records
+        batch = []
+        while not _record_buffer.empty():
+            try:
+                batch.append(_record_buffer.get_nowait())
+            except Empty:
+                break
+
+        if not batch:
+            return  # Nothing to flush (silent)
+
+        # Log flush
+        flush_type = "emergency" if emergency else "scheduled"
+        logger.info(f"Flushing {len(batch)} records ({flush_type})")
+
+        # Output batch as JSON array
+        batch_json = [record.model_dump() for record in batch]
+        json_output = json.dumps(batch_json)
+
+        if settings.output_mode == "stdout":
+            print(json_output, flush=True)
+        elif settings.output_mode == "file" and output_file is not None:
+            output_file.write(json_output + "\n")
+            output_file.flush()
+
+
+def _start_flush_timer(
+    logger: logging.Logger,
+    output_file: TextIO | None,
+) -> None:
+    """Start recurring timer to flush batch at configured interval."""
+    global _flush_timer
+
+    def flush_and_reschedule() -> None:
+        global _flush_timer
+
+        _flush_batch(logger, output_file, emergency=False)
+
+        # Reschedule if not shutting down
+        if not _shutdown_event.is_set():
+            _flush_timer = Timer(settings.batch_interval, flush_and_reschedule)
+            _flush_timer.daemon = True
+            _flush_timer.start()
+
+    # Start first timer
+    _flush_timer = Timer(settings.batch_interval, flush_and_reschedule)
+    _flush_timer.daemon = True
+    _flush_timer.start()
+
+    logger.info(f"Batch flush timer started (interval: {settings.batch_interval}s)")
+
+
 def _create_record_handler(
     logger: logging.Logger,
     output_file: TextIO | None,
-) -> callable:
-    """Create callback function for handling captured traffic records."""
+) -> Callable[[TrafficRecord], None]:
+    """Create callback that buffers records for batching."""
 
     def handle_record(record: TrafficRecord) -> None:
-        json_line = record.model_dump_json()
+        _record_buffer.put(record)
 
-        if settings.output_mode == "stdout":
-            print(json_line, flush=True)
-        elif settings.output_mode == "file" and output_file is not None:
-            output_file.write(json_line + "\n")
-            output_file.flush()
-        # output_mode == "none" -> do nothing
+        # Emergency flush if buffer too large
+        if _record_buffer.qsize() >= BATCH_SIZE_SOFT_LIMIT:
+            logger.warning(
+                f"Buffer at {_record_buffer.qsize()} records, emergency flush triggered"
+            )
+            _flush_batch(logger, output_file, emergency=True)
 
     return handle_record
 
@@ -57,6 +133,8 @@ def _signal_handler(signum: int, frame: object) -> None:
 
 def main() -> int:
     """Main entry point for the traffic capture agent."""
+    global _flush_timer
+
     logger = _setup_logging()
 
     # Register signal handlers for graceful shutdown
@@ -79,6 +157,9 @@ def main() -> int:
             return 1
 
     try:
+        # Start batch flush timer
+        _start_flush_timer(logger, output_file)
+
         # Create and start collector
         collector = TrafficCollector()
         record_handler = _create_record_handler(logger, output_file)
@@ -108,6 +189,13 @@ def main() -> int:
         logger.info("Shutting down...")
         collector.stop()
         logger.info("Traffic capture stopped.")
+
+        # Stop flush timer
+        if _flush_timer is not None:
+            _flush_timer.cancel()
+
+        # Final flush of remaining records
+        _flush_batch(logger, output_file, emergency=False)
 
         return 0
 

@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     output_file: str = "./traffic.jsonl"
     """File path for traffic records when output_mode=file."""
 
+    batch_interval: int = 60
+    """Interval in seconds to batch traffic records before output."""
+
 
 # Global settings instance - loaded once at module import
 settings = Settings()

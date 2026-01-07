@@ -26,3 +26,10 @@ See [AGENTS.md](./AGENTS.md) for detailed project structure and development guid
 See [PRD.md](./PRD.md) for product requirements.
 
 See [CHECKLIST.md](./CHECKLIST.md) for implementation progress.
+
+## Technicals
+
+batching:
+Batch interval: 60s default
+Soft limit: 50,000 records
+Hard limit: 100,000 records

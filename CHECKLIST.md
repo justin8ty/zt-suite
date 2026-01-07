@@ -144,7 +144,7 @@ This checklist tracks implementation progress against PRD requirements.
 - [x] Scapy packet capture implementation
 - [x] Filter for TCP/UDP traffic
 - [x] Extract metadata (src/dst IP, ports, protocol, size, flags)
-- [ ] Batch traffic records (30-60s intervals)
+- [x] Batch traffic records (30-60s intervals)
 - [ ] POST traffic data to backend
 
 ### Backend Traffic Module
