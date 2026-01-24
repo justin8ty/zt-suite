@@ -1,7 +1,20 @@
 from pathlib import Path
 
 import joblib
+from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
+
+
+def build_rf_model(random_state: int = 42) -> RandomForestClassifier:
+    return RandomForestClassifier(
+        n_estimators=300,
+        max_depth=15,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        n_jobs=-1,
+        random_state=random_state,
+        class_weight="balanced",
+    )
 
 
 def build_model(random_state: int = 42) -> XGBClassifier:

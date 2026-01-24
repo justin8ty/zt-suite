@@ -3,16 +3,63 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-from src.config import FEATURE_COLUMNS, LABEL_COLUMN
+from src.config import FEATURE_COLUMNS
 from src.data_loader import load_csv_directory
 from src.evaluate import evaluate_binary
 from src.feature_importance import get_feature_importance, sanity_check_importance
-from src.model import build_model, save_model, train_model
-from src.preprocessing import clean_flows, encode_binary_labels, scale_features
+from src.model import (
+    build_model as build_xgb_model,
+)
+from src.model import (
+    build_rf_model,
+    save_model,
+)
+from src.preprocessing import (
+    clean_flows,
+    encode_binary_labels,
+    scale_features,
+)
 from src.split import train_test_split_session
 
 RAW_DATA_DIR = "data/raw"
-MODEL_OUTPUT_PATH = "models/binary_rf.joblib"
+MODEL_DIR = Path("models")
+MODEL_DIR.mkdir(exist_ok=True)
+
+
+def compute_scale_pos_weight(y):
+    benign = (y == 0).sum()
+    malicious = (y == 1).sum()
+    return benign / malicious
+
+
+def train_and_evaluate(
+    name: str,
+    model,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+):
+    print(f"\n[*] Training {name}...")
+    model.fit(X_train, y_train)
+
+    print(f"[*] Evaluating {name}...")
+    metrics = evaluate_binary(model, X_test, y_test)
+
+    print(metrics["classification_report"])
+    print("Confusion Matrix:")
+    print(metrics["confusion_matrix"])
+    print(f"Recall (Malicious): {metrics['recall']:.4f}")
+
+    if hasattr(model, "feature_importances_"):
+        print(f"[*] Inspecting feature importance for {name}...")
+        fi = get_feature_importance(model)
+        print(fi)
+        sanity_check_importance(fi)
+
+    output_path = MODEL_DIR / f"{name}.joblib"
+    save_model(model, output_path)
+    print(f"[✓] Saved {name} → {output_path}")
 
 
 def main():
@@ -25,42 +72,40 @@ def main():
     print("[*] Encoding labels...")
     df = encode_binary_labels(df)
 
-    print("[*] Splitting dataset...")
+    print("[*] Performing session-based split...")
     X_train_raw, X_test_raw, y_train, y_test = train_test_split_session(df)
 
-    print("[*] Scaling features...")
-    X_train, scaler = scale_features(pd.DataFrame(X_train_raw, columns=FEATURE_COLUMNS))
-    X_test, _ = scale_features(
-        pd.DataFrame(X_test_raw, columns=FEATURE_COLUMNS), scaler=scaler
-    )
+    print("[*] Scaling features (fit on TRAIN only)...")
+    X_train_df = pd.DataFrame(X_train_raw, columns=FEATURE_COLUMNS)
+    X_test_df = pd.DataFrame(X_test_raw, columns=FEATURE_COLUMNS)
 
-    # Save scaler for deployment
-    joblib.dump(scaler, "scaler.joblib")
+    X_train, scaler = scale_features(X_train_df)
+    X_test, _ = scale_features(X_test_df, scaler=scaler)
 
-    print("[*] Building model...")
-    model = build_model()
+    joblib.dump(scaler, MODEL_DIR / "scaler.joblib")
+    print("[✓] Scaler saved")
 
-    print("[*] Training model...")
-    model = train_model(model, X_train, y_train)
+    print("[*] Preparing models...")
+    scale_pos_weight = compute_scale_pos_weight(y_train)
 
-    print("[*] Evaluating model...")
-    metrics = evaluate_binary(model, X_test, y_test)
+    models = {
+        "random_forest": build_rf_model(),
+        "xgboost": build_xgb_model(random_state=42).set_params(
+            scale_pos_weight=scale_pos_weight
+        ),
+    }
 
-    print(metrics["classification_report"])
-    print("Confusion Matrix:")
-    print(metrics["confusion_matrix"])
-    print(f"Recall (Malicious): {metrics['recall']:.4f}")
+    for name, model in models.items():
+        train_and_evaluate(
+            name=name,
+            model=model,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+        )
 
-    print("[*] Inspecting feature importance...")
-    fi = get_feature_importance(model)
-    print(fi)
-
-    sanity_check_importance(fi)
-
-    print("[*] Saving model...")
-    save_model(model, MODEL_OUTPUT_PATH)
-
-    print("[✓] Training complete.")
+    print("\n[✓] All models trained successfully.")
 
 
 if __name__ == "__main__":
