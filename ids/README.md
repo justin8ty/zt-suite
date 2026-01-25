@@ -16,13 +16,13 @@ uv sync
 uv run python train.py
 ```
 
-### Inference (one line)
+### Inference
 
 ```bash
-uv run python -m src.infer --model models/xgb-pre.joblib --input data/flows/ssh50.csv
+uv run python -m src.infer --model models/xgb.joblib --input data/flows/example.csv
 ```
 
-By default, results are saved to `data/flows-results/<input>-<model>.csv` and the scaler is inferred from the model name (e.g. `models/xgb-pre.joblib` -> `models/scaler-pre.joblib`, falling back to `models/scaler.joblib`).
+By default, results are saved to `data/flows-results/<input>-<model>.csv` and the scaler is inferred from the model name.
 
 ## Attack Simulation Setup
 

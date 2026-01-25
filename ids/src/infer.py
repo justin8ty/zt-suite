@@ -10,6 +10,7 @@ def _default_scaler_path(model_path: Path) -> Path:
     """Infer scaler path from model filename.
 
     Examples:
+    - models/xgb.joblib     -> models/scaler.joblib
     - models/xgb-pre.joblib -> models/scaler-pre.joblib
     - models/rf-exp.joblib  -> models/scaler-exp.joblib
     - models/xgb1.joblib    -> models/scaler1.joblib

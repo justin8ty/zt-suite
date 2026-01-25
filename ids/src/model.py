@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Union
 
 import joblib
 from sklearn.ensemble import RandomForestClassifier
@@ -38,7 +39,7 @@ def train_model(model, X_train, y_train):
     return model
 
 
-def save_model(model, output_path: str):
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, output_path)
+def save_model(model, output_path: Union[str, Path]) -> None:
+    output_path_path = Path(output_path)
+    output_path_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, output_path_path)

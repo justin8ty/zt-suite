@@ -59,7 +59,7 @@ def train_and_evaluate(
 
     output_path = MODEL_DIR / f"{name}.joblib"
     save_model(model, output_path)
-    print(f"[✓] Saved {name} → {output_path}")
+    print(f"[OK] Saved {name} -> {output_path}")
 
 
 def main():
@@ -83,7 +83,7 @@ def main():
     X_test, _ = scale_features(X_test_df, scaler=scaler)
 
     joblib.dump(scaler, MODEL_DIR / "scaler.joblib")
-    print("[✓] Scaler saved")
+    print("[OK] Scaler saved")
 
     print("[*] Preparing models...")
     scale_pos_weight = compute_scale_pos_weight(y_train)
@@ -105,7 +105,7 @@ def main():
             y_test=y_test,
         )
 
-    print("\n[✓] All models trained successfully.")
+    print("\n[OK] All models trained successfully.")
 
 
 if __name__ == "__main__":
