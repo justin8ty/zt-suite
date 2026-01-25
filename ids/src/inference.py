@@ -4,7 +4,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from .config import FEATURE_COLUMNS
+from config import COLUMN_RENAME_MAP, FEATURE_COLUMNS
+from preprocessing import clean_flows_inference
 
 
 class TrafficClassifier:
@@ -30,47 +31,42 @@ class TrafficClassifier:
         self.model = joblib.load(self.model_path)
         self.scaler = joblib.load(self.scaler_path)
 
+    def _normalize_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Normalize inference CSV column names to training schema.
+        """
+        return df.rename(columns=COLUMN_RENAME_MAP)
+
     def _prepare_features(self, df: pd.DataFrame) -> np.ndarray:
         """
-        Ensures correct feature order, type, and scaling.
+        Enforces feature schema, cleaning, and scaling.
         """
+        df = self._normalize_columns(df)
+
         missing = set(FEATURE_COLUMNS) - set(df.columns)
         if missing:
             raise RuntimeError(f"Missing required features: {missing}")
 
-        X = df[FEATURE_COLUMNS].copy()
+        df = clean_flows_inference(df)
 
-        # Enforce numeric
-        for col in FEATURE_COLUMNS:
-            X[col] = pd.to_numeric(X[col], errors="coerce")
-
-        if X.isna().any().any():
-            raise RuntimeError("NaNs detected after numeric coercion")
-
-        return self.scaler.transform(X.values)
+        X = df[FEATURE_COLUMNS].values
+        return self.scaler.transform(X)
 
     def predict_proba(self, df: pd.DataFrame) -> np.ndarray:
-        """
-        Returns malicious probability.
-        """
         X = self._prepare_features(df)
         return self.model.predict_proba(X)[:, 1]
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
-        """
-        Returns binary prediction using configured threshold.
-        """
         scores = self.predict_proba(df)
         return (scores >= self.threshold).astype(int)
 
     def predict_with_metadata(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Returns predictions + probabilities.
-        """
-        scores = self.predict_proba(df)
+        df_norm = self._normalize_columns(df)
+
+        scores = self.predict_proba(df_norm)
         preds = (scores >= self.threshold).astype(int)
 
-        result = df.copy()
+        result = df_norm.loc[: len(preds) - 1].copy()
         result["malicious_score"] = scores
         result["prediction"] = preds
         result["prediction_label"] = result["prediction"].map(

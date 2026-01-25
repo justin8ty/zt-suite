@@ -1,7 +1,8 @@
 import argparse
 
 import pandas as pd
-from src.inference import TrafficClassifier
+
+from inference import TrafficClassifier
 
 
 def main():
@@ -9,7 +10,7 @@ def main():
     parser.add_argument("--model", required=True, help="Path to model.joblib")
     parser.add_argument("--scaler", required=True, help="Path to scaler.joblib")
     parser.add_argument("--input", required=True, help="CSV file for inference")
-    parser.add_argument("--threshold", type=float, default=0.5)
+    parser.add_argument("--threshold", type=float, default=0.4)
     parser.add_argument("--output", default="predictions.csv")
 
     args = parser.parse_args()
