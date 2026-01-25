@@ -4,8 +4,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from config import COLUMN_RENAME_MAP, FEATURE_COLUMNS
-from preprocessing import clean_flows_inference
+from .config import COLUMN_RENAME_MAP, FEATURE_COLUMNS
+from .preprocessing import clean_flows_inference
 
 
 class TrafficClassifier:

@@ -2,7 +2,7 @@ import argparse
 
 import pandas as pd
 
-from inference import TrafficClassifier
+from .inference import TrafficClassifier
 
 
 def main():

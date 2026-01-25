@@ -1,12 +1,16 @@
+from __future__ import annotations
+
+from typing import Optional, cast
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-from config import FEATURE_COLUMNS, LABEL_COLUMN
+from .config import FEATURE_COLUMNS, LABEL_COLUMN
 
 
 def clean_flows(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[FEATURE_COLUMNS + [LABEL_COLUMN]]
+    df = cast(pd.DataFrame, df.loc[:, FEATURE_COLUMNS + [LABEL_COLUMN]]).copy()
 
     for col in FEATURE_COLUMNS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -25,7 +29,7 @@ def clean_flows_inference(df: pd.DataFrame) -> pd.DataFrame:
     Label-free cleaning for inference.
     Mirrors training preprocessing.
     """
-    df = df[FEATURE_COLUMNS].copy()
+    df = cast(pd.DataFrame, df.loc[:, FEATURE_COLUMNS]).copy()
 
     for col in FEATURE_COLUMNS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -44,7 +48,7 @@ def encode_binary_labels(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def scale_features(df: pd.DataFrame, scaler: StandardScaler = None):
+def scale_features(df: pd.DataFrame, scaler: Optional[StandardScaler] = None):
     X = df[FEATURE_COLUMNS].values
 
     if scaler is None:
