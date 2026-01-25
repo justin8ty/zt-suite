@@ -74,6 +74,7 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(input_path)
+    input_rows = len(df)
 
     clf = TrafficClassifier(
         model_path=str(model_path),
@@ -84,7 +85,11 @@ def main():
     result = clf.predict_with_metadata(df)
     result.to_csv(output_path, index=False)
 
+    dropped = input_rows - len(result)
+
     print(f"[OK] Predictions saved to {output_path}")
+    if dropped > 0:
+        print(f"[i] Dropped {dropped} rows during cleaning")
     print(result[["malicious_score", "prediction_label"]].head())
 
 

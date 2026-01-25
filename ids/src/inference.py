@@ -63,10 +63,24 @@ class TrafficClassifier:
     def predict_with_metadata(self, df: pd.DataFrame) -> pd.DataFrame:
         df_norm = self._normalize_columns(df)
 
-        scores = self.predict_proba(df_norm)
+        missing = set(FEATURE_COLUMNS) - set(df_norm.columns)
+        if missing:
+            raise RuntimeError(f"Missing required features: {missing}")
+
+        # Keep alignment by using the cleaned dataframe's index.
+        df_features = clean_flows_inference(df_norm)
+
+        result = df_norm.loc[df_features.index].copy()
+        if len(df_features) == 0:
+            result["malicious_score"] = np.array([], dtype=float)
+            result["prediction"] = np.array([], dtype=int)
+            result["prediction_label"] = pd.Series([], dtype=object)
+            return result
+
+        X = self.scaler.transform(df_features[FEATURE_COLUMNS].values)
+        scores = self.model.predict_proba(X)[:, 1]
         preds = (scores >= self.threshold).astype(int)
 
-        result = df_norm.loc[: len(preds) - 1].copy()
         result["malicious_score"] = scores
         result["prediction"] = preds
         result["prediction_label"] = result["prediction"].map(
