@@ -89,8 +89,8 @@ def main():
     scale_pos_weight = compute_scale_pos_weight(y_train)
 
     models = {
-        "random_forest": build_rf_model(),
-        "xgboost": build_xgb_model(random_state=42).set_params(
+        "rf": build_rf_model(),
+        "xgb": build_xgb_model(random_state=42).set_params(
             scale_pos_weight=scale_pos_weight
         ),
     }

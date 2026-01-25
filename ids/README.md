@@ -19,8 +19,10 @@ uv run python train.py
 ### Inference (one line)
 
 ```bash
-uv run python -m src.infer --model models/xgb.joblib --scaler models/scaler.joblib --input data/flows/ssh50.csv --output data/flows_results/ssh50-rf.csv
+uv run python -m src.infer --model models/xgb-pre.joblib --input data/flows/ssh50.csv
 ```
+
+By default, results are saved to `data/flows-results/<input>-<model>.csv` and the scaler is inferred from the model name (e.g. `models/xgb-pre.joblib` -> `models/scaler-pre.joblib`, falling back to `models/scaler.joblib`).
 
 ## Attack Simulation Setup
 
@@ -46,7 +48,7 @@ sudo systemctl enable --now vsftpd ssh apache2
 
 ```bash
 ip addr
-sudo tcpdump -i ens33 -w example.cap
+sudo tcpdump -i ens33 -w example.pcap
 ```
 
 #### After attack
