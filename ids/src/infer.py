@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .config import MODEL_FAMILY_THRESHOLDS
 from .inference import TrafficClassifier
 
 
@@ -38,6 +39,38 @@ def _default_scaler_path(model_path: Path) -> Path:
     return fallback
 
 
+def _infer_model_family(model_path: Path) -> str | None:
+    stem = model_path.stem
+    if stem.startswith("xgb"):
+        return "xgb"
+    if stem.startswith("rf"):
+        return "rf"
+    return None
+
+
+def _resolve_threshold(
+    parser: argparse.ArgumentParser, model_path: Path, threshold: float | None
+) -> float:
+    if threshold is not None:
+        return threshold
+
+    family = _infer_model_family(model_path)
+    if family is None:
+        parser.error(
+            f"Unable to infer model family from '{model_path.name}'. "
+            "Pass --threshold explicitly."
+        )
+
+    try:
+        return MODEL_FAMILY_THRESHOLDS[family]
+    except KeyError:
+        parser.error(
+            f"No default threshold configured for model family '{family}'. "
+            "Pass --threshold explicitly."
+        )
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description="Network Traffic Inference")
     parser.add_argument("--model", required=True, help="Path to model.joblib")
@@ -47,7 +80,12 @@ def main():
         help="Path to scaler.joblib (defaults to matching scaler next to model)",
     )
     parser.add_argument("--input", required=True, help="CSV file for inference")
-    parser.add_argument("--threshold", type=float, default=0.4)
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Override decision threshold (defaults to model-family threshold)",
+    )
     parser.add_argument(
         "--output-dir",
         default="data/flows-results",
@@ -64,6 +102,7 @@ def main():
     model_path = Path(args.model)
     input_path = Path(args.input)
 
+    threshold = _resolve_threshold(parser, model_path, args.threshold)
     scaler_path = Path(args.scaler) if args.scaler else _default_scaler_path(model_path)
 
     if args.output:
@@ -80,7 +119,7 @@ def main():
     clf = TrafficClassifier(
         model_path=str(model_path),
         scaler_path=str(scaler_path),
-        threshold=args.threshold,
+        threshold=threshold,
     )
 
     result = clf.predict_with_metadata(df)

@@ -87,6 +87,14 @@ FEATURE_COLUMNS = [
 
 LABEL_COLUMN = "Label"
 
+
+# Default inference thresholds by model family (overridable via CLI `--threshold`).
+# Keys are inferred from model filenames (e.g., `xgb*.joblib` -> "xgb").
+MODEL_FAMILY_THRESHOLDS = {
+    "xgb": 0.4,
+    "rf": 0.35,
+}
+
 # Canonical inference column normalization
 COLUMN_RENAME_MAP = {
     "dst_port": "Dst Port",
