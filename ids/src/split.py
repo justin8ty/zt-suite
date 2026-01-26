@@ -9,7 +9,7 @@ def train_test_split_session(
 ):
     """
     Split dataset by pseudo-session to avoid leakage.
-    Creates session_id from Protocol, Dst Port, Flow Duration, Tot Fwd Pkts, Tot Bwd Pkts
+    Creates session_id from Dst Port, Flow Duration, Tot Fwd Pkts, Tot Bwd Pkts
     """
     df = df.copy()
     # Generate pseudo-session
@@ -41,9 +41,9 @@ def train_test_split_session(
     test_df = df[df["session_id"].isin(test_sessions)]
 
     # Extract features and labels
-    X_train = train_df[FEATURE_COLUMNS].values
-    y_train = train_df[LABEL_COLUMN].values
-    X_test = test_df[FEATURE_COLUMNS].values
-    y_test = test_df[LABEL_COLUMN].values
+    X_train = train_df[FEATURE_COLUMNS].to_numpy()
+    y_train = train_df[LABEL_COLUMN].to_numpy()
+    X_test = test_df[FEATURE_COLUMNS].to_numpy()
+    y_test = test_df[LABEL_COLUMN].to_numpy()
 
     return X_train, X_test, y_train, y_test
