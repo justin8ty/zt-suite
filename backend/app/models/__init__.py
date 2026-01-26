@@ -8,5 +8,7 @@ from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.models.role import Role
 from app.models.access_log import AccessLog
+from app.models.device import Device
+from app.models.posture import PostureReport
 
-__all__ = ["User", "RefreshToken", "Role", "AccessLog"]
+__all__ = ["User", "RefreshToken", "Role", "AccessLog", "Device", "PostureReport"]
