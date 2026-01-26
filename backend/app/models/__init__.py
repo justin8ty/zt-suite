@@ -7,5 +7,6 @@ and can be discovered by Alembic for migrations.
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.models.role import Role
+from app.models.access_log import AccessLog
 
-__all__ = ["User", "RefreshToken", "Role"]
+__all__ = ["User", "RefreshToken", "Role", "AccessLog"]

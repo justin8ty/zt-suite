@@ -19,6 +19,7 @@ from app.schemas.auth import (
     RefreshRequest,
     Token,
 )
+from app.services.access_log import access_log_service
 from app.services.auth import auth_service
 
 router = APIRouter()
@@ -35,13 +36,41 @@ async def login(
     db: DbSession,
 ) -> Token | MFARequiredResponse:
     """Login with email and password."""
-    user = auth_service.authenticate(db, login_data)
+    try:
+        user = auth_service.authenticate(db, login_data)
 
-    if user.mfa_enabled:
-        temp_token = create_mfa_temp_token(user.id)
-        return MFARequiredResponse(temp_token=temp_token)
+        if user.mfa_enabled:
+            temp_token = create_mfa_temp_token(user.id)
+            access_log_service.log_access(
+                db=db,
+                action="login_challenge_mfa",
+                status="success",
+                user_id=user.id,
+                resource="/api/auth/login",
+                details="MFA challenge issued",
+            )
+            return MFARequiredResponse(temp_token=temp_token)
 
-    return auth_service.create_tokens(db, user)
+        access_log_service.log_access(
+            db=db,
+            action="login_success",
+            status="success",
+            user_id=user.id,
+            resource="/api/auth/login",
+        )
+        return auth_service.create_tokens(db, user)
+
+    except HTTPException as e:
+        # Try to find user ID for logging if possible (not easy here without re-querying)
+        # We'll log with user_id=None for failed logins to avoid enumeration assistance in logs
+        access_log_service.log_access(
+            db=db,
+            action="login_failed",
+            status="failure",
+            resource="/api/auth/login",
+            details=str(e.detail),
+        )
+        raise e
 
 
 # Support for Swagger UI "Authorize" button (OAuth2 form data)
@@ -98,6 +127,13 @@ async def logout(
 ) -> None:
     """Logout user."""
     auth_service.logout(db, refresh_data.refresh_token)
+    access_log_service.log_access(
+        db=db,
+        action="logout",
+        status="success",
+        user_id=current_user.id,
+        resource="/api/auth/logout",
+    )
 
 
 @router.post(
@@ -155,6 +191,34 @@ async def mfa_validate(
     db: DbSession,
 ) -> Token:
     """Validate MFA code and issue tokens."""
-    return auth_service.validate_mfa_login(
-        db, validate_data.temp_token, validate_data.code
-    )
+    try:
+        tokens = auth_service.validate_mfa_login(
+            db, validate_data.temp_token, validate_data.code
+        )
+        # We need to decode the token to get the user ID for logging?
+        # Or validate_mfa_login could return user?
+        # Actually, validate_mfa_login validates the temp token which has the user ID.
+        # Let's decode temp token here just for logging (safe because auth_service validates it too)
+        from app.core.security import decode_token
+
+        payload = decode_token(validate_data.temp_token)
+        user_id = int(payload["sub"]) if payload else None
+
+        access_log_service.log_access(
+            db=db,
+            action="mfa_login_success",
+            status="success",
+            user_id=user_id,
+            resource="/api/auth/mfa/validate",
+        )
+        return tokens
+
+    except HTTPException as e:
+        access_log_service.log_access(
+            db=db,
+            action="mfa_login_failed",
+            status="failure",
+            resource="/api/auth/mfa/validate",
+            details=str(e.detail),
+        )
+        raise e
