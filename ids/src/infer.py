@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import MODEL_FAMILY_THRESHOLDS
+from .aggregation import AggregationConfig, aggregate_scored_flows
+from .config import MODEL_FAMILY_AGG_THRESHOLDS, MODEL_FAMILY_THRESHOLDS
 from .inference import TrafficClassifier
 
 
@@ -71,6 +72,29 @@ def _resolve_threshold(
         raise
 
 
+def _resolve_agg_theta_flow(
+    parser: argparse.ArgumentParser, model_path: Path, theta_flow: float | None
+) -> float:
+    if theta_flow is not None:
+        return theta_flow
+
+    family = _infer_model_family(model_path)
+    if family is None:
+        parser.error(
+            f"Unable to infer model family from '{model_path.name}'. "
+            "Pass --agg-theta-flow explicitly."
+        )
+
+    try:
+        return MODEL_FAMILY_AGG_THRESHOLDS[family]
+    except KeyError:
+        parser.error(
+            f"No default aggregation threshold configured for model family '{family}'. "
+            "Pass --agg-theta-flow explicitly."
+        )
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description="Network Traffic Inference")
     parser.add_argument("--model", required=True, help="Path to model.joblib")
@@ -95,6 +119,52 @@ def main():
         "--output",
         default=None,
         help="Output CSV path (defaults to <output-dir>/<input>-<model>.csv)",
+    )
+
+    parser.add_argument(
+        "--aggregate",
+        action="store_true",
+        help="Enable windowed aggregation and alerting on scored flows",
+    )
+    parser.add_argument(
+        "--agg-window-secs",
+        type=int,
+        default=60,
+        help="Aggregation window size in seconds (default: 60)",
+    )
+    parser.add_argument(
+        "--agg-allowed-lateness-secs",
+        type=int,
+        default=10,
+        help="Allowed out-of-order lateness in seconds (default: 10)",
+    )
+    parser.add_argument(
+        "--agg-theta-flow",
+        type=float,
+        default=None,
+        help="Weak flow score threshold (defaults to model-family agg threshold)",
+    )
+    parser.add_argument(
+        "--agg-theta-ratio",
+        type=float,
+        default=0.20,
+        help="Alert ratio threshold within a window (default: 0.20)",
+    )
+    parser.add_argument(
+        "--agg-min-flows",
+        type=int,
+        default=50,
+        help="Minimum flows per window to evaluate alerts (default: 50)",
+    )
+    parser.add_argument(
+        "--windows-out",
+        default=None,
+        help="Output CSV path for aggregated window metrics",
+    )
+    parser.add_argument(
+        "--alerts-out",
+        default=None,
+        help="Output CSV path for aggregated alerts",
     )
 
     args = parser.parse_args()
@@ -131,6 +201,46 @@ def main():
     if dropped > 0:
         print(f"[i] Dropped {dropped} rows during cleaning")
     print(result[["malicious_score", "prediction_label"]].head())
+
+    if args.aggregate:
+        theta_flow = _resolve_agg_theta_flow(parser, model_path, args.agg_theta_flow)
+        cfg = AggregationConfig(
+            window_secs=int(args.agg_window_secs),
+            allowed_lateness_secs=int(args.agg_allowed_lateness_secs),
+            group_bys=("src_ip", "src_ip,dst_port"),
+            theta_flow=float(theta_flow),
+            theta_ratio=float(args.agg_theta_ratio),
+            min_flows=int(args.agg_min_flows),
+        )
+
+        windows_df, alerts_df = aggregate_scored_flows(result, cfg)
+
+        if args.windows_out:
+            windows_out = Path(args.windows_out)
+        else:
+            windows_out = output_path.with_name(f"{output_path.stem}-windows.csv")
+
+        if args.alerts_out:
+            alerts_out = Path(args.alerts_out)
+        else:
+            alerts_out = output_path.with_name(f"{output_path.stem}-alerts.csv")
+
+        windows_out.parent.mkdir(parents=True, exist_ok=True)
+        alerts_out.parent.mkdir(parents=True, exist_ok=True)
+
+        windows_df.to_csv(windows_out, index=False)
+        alerts_df.to_csv(alerts_out, index=False)
+
+        print(f"[OK] Window metrics saved to {windows_out}")
+        print(f"[OK] Alerts saved to {alerts_out}")
+        if len(alerts_df) == 0:
+            print("[i] No alerts triggered")
+        else:
+            print(
+                alerts_df[
+                    ["group_by", "group_key", "severity", "confidence", "reason"]
+                ].head()
+            )
 
 
 if __name__ == "__main__":

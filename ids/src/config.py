@@ -95,6 +95,14 @@ MODEL_FAMILY_THRESHOLDS = {
     "rf": 0.35,
 }
 
+# Default aggregation (weak-signal) thresholds by model family.
+# These are intentionally lower than `MODEL_FAMILY_THRESHOLDS` because detection
+# happens after windowed aggregation, not per-flow.
+MODEL_FAMILY_AGG_THRESHOLDS = {
+    "xgb": 0.25,
+    "rf": 0.20,
+}
+
 # Canonical inference column normalization
 COLUMN_RENAME_MAP = {
     "dst_port": "Dst Port",
@@ -163,6 +171,7 @@ COLUMN_RENAME_MAP = {
     "subflow_bwd_pkts": "Subflow Bwd Pkts",
     "subflow_bwd_byts": "Subflow Bwd Byts",
     "init_bwd_win_byts": "Init Bwd Win Byts",
+    "init_fwd_win_byts": "Init Fwd Win Byts",
     "fwd_act_data_pkts": "Fwd Act Data Pkts",
     "active_mean": "Active Mean",
     "active_std": "Active Std",
