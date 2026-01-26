@@ -10,15 +10,7 @@ from app.core.config import get_settings
 from app.db.base import Base
 
 # Import all models here so Alembic can detect them for autogenerate
-# These imports will be added as models are created:
-# from app.models.user import User
-# from app.models.role import Role
-# from app.models.device import Device
-# from app.models.posture import PostureReport
-# from app.models.traffic import TrafficRecord
-# from app.models.alert import Alert
-# from app.models.access_log import AccessLog
-# from app.models.refresh_token import RefreshToken
+from app import models  # noqa: F401
 
 # Alembic Config object
 config = context.config

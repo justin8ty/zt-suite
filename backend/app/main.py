@@ -8,8 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
+from app.core.bootstrap import create_first_admin
+from app.core.permissions import seed_roles
 from app.db.base import Base
-from app.db.session import engine
+from app.db.session import SessionLocal, engine
+
+# Import models to register them with SQLAlchemy
+from app.models import User  # noqa: F401
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -35,6 +40,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # In production, use Alembic migrations instead
     Base.metadata.create_all(bind=engine)
     logger.info("database_tables_created")
+
+    # Seed data
+    with SessionLocal() as db:
+        seed_roles(db)
+        create_first_admin(db)
+    logger.info("database_seeded")
 
     yield
 
@@ -83,11 +94,19 @@ def create_app() -> FastAPI:
             "docs": "/docs",
         }
 
-    # Register routers here as modules are implemented
-    # from app.api.routes import auth, users, devices, traffic, alerts, logs, protected
-    # app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-    # app.include_router(users.router, prefix="/api/users", tags=["Users"])
-    # etc.
+    # Register routers
+    from app.api.routes import users, auth
+
+    app.include_router(users.router, prefix="/api/users", tags=["Users"])
+    app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+
+    # Future routers (uncomment as modules are implemented):
+    # from app.api.routes import devices, traffic, alerts, logs, protected
+    # app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
+    # app.include_router(traffic.router, prefix="/api/traffic", tags=["Traffic"])
+    # app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
+    # app.include_router(logs.router, prefix="/api/logs", tags=["Access Logs"])
+    # app.include_router(protected.router, prefix="/api/protected", tags=["Protected Resources"])
 
     return app
 

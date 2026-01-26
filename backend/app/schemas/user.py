@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.schemas.role import RoleRead
+
 
 class UserBase(BaseModel):
     """Base user schema with common fields."""
@@ -43,6 +45,7 @@ class UserRead(UserBase):
     id: int = Field(..., description="User ID")
     is_active: bool = Field(..., description="Whether account is active")
     mfa_enabled: bool = Field(..., description="Whether MFA is enabled")
+    roles: list[RoleRead] = Field(default_factory=list, description="User roles")
     created_at: datetime = Field(..., description="Account creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 
