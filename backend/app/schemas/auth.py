@@ -1,6 +1,6 @@
 """Authentication Pydantic schemas."""
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 
 class LoginRequest(BaseModel):
@@ -29,3 +29,30 @@ class RefreshRequest(BaseModel):
     """Refresh token request schema."""
 
     refresh_token: str
+
+
+class MFAEnrollResponse(BaseModel):
+    """MFA Enrollment response schema."""
+
+    secret: str
+    provisioning_uri: str
+
+
+class MFAVerifyRequest(BaseModel):
+    """MFA Verification request schema."""
+
+    code: str
+
+
+class MFARequiredResponse(BaseModel):
+    """Response when login requires MFA."""
+
+    mfa_required: bool = True
+    temp_token: str
+
+
+class MFAValidateRequest(BaseModel):
+    """MFA Validation request schema (Step 2 of login)."""
+
+    temp_token: str
+    code: str

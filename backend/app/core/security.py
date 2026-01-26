@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import pyotp
 from jose import jwt
 from passlib.context import CryptContext
 
@@ -75,12 +76,6 @@ def create_refresh_token(subject: str | Any) -> tuple[str, str]:
     )
 
     # Hash the token for storage
-    # Use sha256 via passlib (faster than argon2 for tokens) or just argon2
-    # Since we already have argon2 setup, we'll use it but with lower parameters
-    # for speed if possible, or just standard verify.
-    # Actually, for refresh tokens, a fast hash like SHA256 is better than Argon2
-    # because we look it up frequently. But let's stick to pwd_context for simplicity
-    # and consistency in FYP.
     hashed_token = hash_password(raw_token)
 
     return raw_token, hashed_token
@@ -104,3 +99,53 @@ def decode_token(token: str) -> dict[str, Any] | None:
         return payload
     except Exception:
         return None
+
+
+def generate_totp_secret() -> str:
+    """Generate a random base32 secret for TOTP."""
+    return pyotp.random_base32()
+
+
+def verify_totp(secret: str, code: str) -> bool:
+    """Verify a TOTP code against a secret.
+
+    Args:
+        secret: The base32 secret.
+        code: The 6-digit code provided by the user.
+
+    Returns:
+        True if valid, False otherwise.
+    """
+    totp = pyotp.TOTP(secret)
+    return totp.verify(code)
+
+
+def get_totp_uri(account_name: str, secret: str) -> str:
+    """Generate the provisioning URI for TOTP.
+
+    Args:
+        account_name: User's email or username.
+        secret: The base32 secret.
+
+    Returns:
+        otpauth:// URI string.
+    """
+    return pyotp.TOTP(secret).provisioning_uri(
+        name=account_name, issuer_name=settings.mfa_issuer_name
+    )
+
+
+def create_mfa_temp_token(subject: str | Any) -> str:
+    """Create a temporary token for MFA validation step.
+
+    This token is short-lived and only valid for the /mfa/validate endpoint.
+    It cannot be used for accessing protected resources.
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=5)
+    to_encode = {"exp": expire, "sub": str(subject), "type": "mfa_pending"}
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.secret_key,
+        algorithm=settings.algorithm,
+    )
+    return encoded_jwt

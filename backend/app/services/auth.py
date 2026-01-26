@@ -16,10 +16,11 @@ from app.core.security import (
     verify_password,
     decode_token,
     hash_password,
+    verify_totp,
 )
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
-from app.schemas.auth import LoginRequest, Token
+from app.schemas.auth import LoginRequest, Token, TokenPayload
 from app.services.user import user_service
 
 
@@ -75,21 +76,11 @@ class AuthService:
         raw_refresh, hashed_refresh = create_refresh_token(user.id)
 
         # Store refresh token in DB
-        # First, optionally revoke old tokens to prevent buildup (simple policy)
-        # For now, just create new one
         db_refresh = RefreshToken(
             token_hash=hashed_refresh,
             user_id=user.id,
             expires_at=datetime.now(timezone.utc)
-            + timedelta(days=7),  # Fixed duration, should match config
-        )
-
-        # Need to import config to get actual duration
-        from app.core.config import get_settings
-
-        settings = get_settings()
-        db_refresh.expires_at = datetime.now(timezone.utc) + timedelta(
-            days=settings.refresh_token_expire_days
+            + timedelta(days=7),  # Default, overwritten by config below
         )
 
         # Need to import config to get actual duration
@@ -130,13 +121,6 @@ class AuthService:
         user_id = int(payload["sub"])
 
         # Verify token exists in DB and is valid
-        # We need to query by user_id and verify hash
-        # This is slightly inefficient (fetching all user's tokens), but safe
-        # Better: Store token ID in JWT? No, stateless.
-        # Alternatively: Store hash of raw token? Yes we did that.
-        # But we can't query by hash easily because Argon2 is salted randomly.
-        # So we have to iterate user's active tokens.
-
         user_tokens = db.scalars(
             select(RefreshToken).where(
                 RefreshToken.user_id == user_id,
@@ -197,6 +181,71 @@ class AuthService:
         except Exception:
             # Fail silently on logout errors
             pass
+
+    @staticmethod
+    def enable_mfa(db: Session, user: User, code: str) -> bool:
+        """Verify code and enable MFA for user.
+
+        Args:
+            db: Database session.
+            user: User object.
+            code: TOTP code.
+
+        Returns:
+            True if successful.
+
+        Raises:
+            InvalidCredentialsError: If code is invalid.
+        """
+        if not user.mfa_secret:
+            raise InvalidCredentialsError()
+
+        if not verify_totp(user.mfa_secret, code):
+            raise InvalidCredentialsError()
+
+        user.mfa_enabled = True
+        db.commit()
+        db.refresh(user)
+        return True
+
+    @staticmethod
+    def validate_mfa_login(db: Session, temp_token: str, code: str) -> Token:
+        """Validate MFA login step 2.
+
+        Args:
+            db: Database session.
+            temp_token: Temporary JWT from step 1.
+            code: TOTP code.
+
+        Returns:
+            Access tokens.
+
+        Raises:
+            TokenInvalidError: If temp_token is invalid.
+            InvalidCredentialsError: If code is invalid.
+        """
+        payload = decode_token(temp_token)
+        if (
+            not payload
+            or payload.get("type") != "mfa_pending"
+            or not payload.get("sub")
+        ):
+            raise TokenInvalidError()
+
+        user_id = int(payload["sub"])
+        user = user_service.get_by_id(db, user_id)
+
+        if not user or not user.is_active:
+            raise TokenInvalidError()
+
+        if not user.mfa_enabled or not user.mfa_secret:
+            # Should not happen if flow is correct, but fail safe
+            raise InvalidCredentialsError()
+
+        if not verify_totp(user.mfa_secret, code):
+            raise InvalidCredentialsError()
+
+        return AuthService.create_tokens(db, user)
 
 
 auth_service = AuthService()
