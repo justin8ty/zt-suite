@@ -34,3 +34,6 @@ agent/traffic.jsonl
 # Data / ML artifacts
 *.joblib
 *.csv
+
+# SQLite database
+*.db
