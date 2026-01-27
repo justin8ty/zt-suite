@@ -3,6 +3,7 @@ from typing import Union
 
 import joblib
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 from xgboost import XGBClassifier
 
 
@@ -31,6 +32,20 @@ def build_model(random_state: int = 42) -> XGBClassifier:
         n_jobs=-1,
         random_state=random_state,
         tree_method="hist",
+    )
+
+
+def build_mlp_model(random_state: int = 42) -> MLPClassifier:
+    return MLPClassifier(
+        hidden_layer_sizes=(128, 64, 32),
+        activation="relu",
+        solver="adam",
+        learning_rate="adaptive",
+        learning_rate_init=0.001,
+        max_iter=300,
+        early_stopping=True,
+        validation_fraction=0.1,
+        random_state=random_state,
     )
 
 

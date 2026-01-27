@@ -93,6 +93,7 @@ LABEL_COLUMN = "Label"
 MODEL_FAMILY_THRESHOLDS = {
     "xgb": 0.4,
     "rf": 0.35,
+    "mlp": 0.5,
 }
 
 # Default aggregation (weak-signal) thresholds by model family.
@@ -101,6 +102,7 @@ MODEL_FAMILY_THRESHOLDS = {
 MODEL_FAMILY_AGG_THRESHOLDS = {
     "xgb": 0.25,
     "rf": 0.20,
+    "mlp": 0.35,
 }
 
 # Canonical inference column normalization

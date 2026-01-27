@@ -2,6 +2,7 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
+from sklearn.utils.class_weight import compute_sample_weight
 
 from src.config import FEATURE_COLUMNS
 from src.data_loader import load_csv_directory
@@ -11,6 +12,7 @@ from src.model import (
     build_model as build_xgb_model,
 )
 from src.model import (
+    build_mlp_model,
     build_rf_model,
     save_model,
 )
@@ -32,6 +34,10 @@ def compute_scale_pos_weight(y):
     return benign / malicious
 
 
+def compute_sample_weights(y):
+    return compute_sample_weight(class_weight="balanced", y=y)
+
+
 def train_and_evaluate(
     name: str,
     model,
@@ -39,9 +45,13 @@ def train_and_evaluate(
     y_train,
     X_test,
     y_test,
+    sample_weight=None,
 ):
     print(f"\n[*] Training {name}...")
-    model.fit(X_train, y_train)
+    if sample_weight is not None:
+        model.fit(X_train, y_train, sample_weight=sample_weight)
+    else:
+        model.fit(X_train, y_train)
 
     print(f"[*] Evaluating {name}...")
     metrics = evaluate_binary(model, X_test, y_test)
@@ -87,15 +97,20 @@ def main():
 
     print("[*] Preparing models...")
     scale_pos_weight = compute_scale_pos_weight(y_train)
+    sample_weights = compute_sample_weights(y_train)
 
     models = {
-        "rf": build_rf_model(),
-        "xgb": build_xgb_model(random_state=42).set_params(
-            scale_pos_weight=scale_pos_weight
+        "rf": (build_rf_model(), None),
+        "xgb": (
+            build_xgb_model(random_state=42).set_params(
+                scale_pos_weight=scale_pos_weight
+            ),
+            None,
         ),
+        "mlp": (build_mlp_model(), sample_weights),
     }
 
-    for name, model in models.items():
+    for name, (model, sample_weight) in models.items():
         train_and_evaluate(
             name=name,
             model=model,
@@ -103,6 +118,7 @@ def main():
             y_train=y_train,
             X_test=X_test,
             y_test=y_test,
+            sample_weight=sample_weight,
         )
 
     print("\n[OK] All models trained successfully.")
