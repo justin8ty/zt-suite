@@ -11,9 +11,9 @@ export function DashboardLayout() {
   const currentUserQuery = useCurrentUser()
 
   return (
-    <div className="app-shell">
+    <div className="mx-auto grid min-h-screen w-[min(1440px,calc(100%-2rem))] grid-cols-[280px_minmax(0,1fr)] gap-4 py-4 max-lg:grid-cols-1">
       <AppSidebar />
-      <div className="app-main">
+      <div className="min-w-0">
         <AppHeader />
         {currentUserQuery.isLoading && <LoadingState message="Loading session..." />}
         {currentUserQuery.isError && <ErrorState message={getApiErrorMessage(currentUserQuery.error)} />}
