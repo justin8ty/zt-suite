@@ -81,15 +81,11 @@ h2 {
   font-size: 1.1rem;
 }
 
-.auth-page,
-.dashboard-page {
-  width: min(1120px, calc(100% - 32px));
-  margin: 0 auto;
-}
-
 .auth-page {
   display: grid;
+  width: min(1120px, calc(100% - 32px));
   min-height: 100vh;
+  margin: 0 auto;
   place-items: center;
   padding: 32px 0;
 }
@@ -97,7 +93,10 @@ h2 {
 .auth-card,
 .panel,
 .state-card,
-.alert {
+.alert,
+.metric-card,
+.app-sidebar,
+.app-header {
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.78);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
@@ -120,7 +119,8 @@ h2 {
 }
 
 .muted,
-.auth-footnote {
+.auth-footnote,
+.header-subtitle {
   color: #94a3b8;
 }
 
@@ -164,16 +164,159 @@ h2 {
   text-decoration: none;
 }
 
-.dashboard-page {
-  padding: 40px 0;
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+  width: min(1440px, calc(100% - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px 0;
 }
 
-.dashboard-header {
+.app-sidebar,
+.app-header,
+.panel,
+.state-card,
+.alert,
+.metric-card {
+  border-radius: 22px;
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 18px;
+  height: calc(100vh - 36px);
+  padding: 20px;
+}
+
+.brand-block {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.brand-block strong,
+.brand-block span {
+  display: block;
+}
+
+.brand-block strong {
+  color: #f8fafc;
+}
+
+.brand-block span,
+.user-chip small {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.brand-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #38bdf8, #22c55e);
+  color: #04111f;
+  font-weight: 900;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-link {
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: #cbd5e1;
+  padding: 12px 14px;
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  border-color: rgba(56, 189, 248, 0.28);
+  background: rgba(56, 189, 248, 0.12);
+  color: #f8fafc;
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 28px;
+  margin-bottom: 18px;
+  padding: 18px 22px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-chip {
+  display: grid;
+  gap: 2px;
+  color: #f8fafc;
+  text-align: right;
+}
+
+.content-page {
+  display: grid;
+  gap: 18px;
+}
+
+.page-heading {
+  padding: 18px 4px 4px;
+}
+
+.page-heading .muted {
+  max-width: 760px;
+  margin-top: 14px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metric-card {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+}
+
+.metric-card span,
+.metric-card p {
+  color: #94a3b8;
+}
+
+.metric-card strong {
+  color: #f8fafc;
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.metric-card-success strong {
+  color: #86efac;
+}
+
+.metric-card-warning strong {
+  color: #fde68a;
+}
+
+.metric-card-danger strong {
+  color: #fca5a5;
 }
 
 .panel-grid {
@@ -185,7 +328,6 @@ h2 {
 .panel,
 .state-card,
 .alert {
-  border-radius: 22px;
   padding: 24px;
 }
 
@@ -233,21 +375,50 @@ dd {
   color: #fecaca;
 }
 
-@media (max-width: 760px) {
-  .auth-card {
-    padding: 24px;
+@media (max-width: 1100px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: 1fr;
   }
 
-  .dashboard-header,
+  .app-sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .sidebar-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-header,
+  .header-actions,
   .panel dl div {
+    align-items: stretch;
     flex-direction: column;
+  }
+
+  .user-chip,
+  dd {
+    text-align: left;
   }
 
   .panel-grid {
     grid-template-columns: 1fr;
   }
+}
 
-  dd {
-    text-align: left;
+@media (max-width: 560px) {
+  .auth-card {
+    padding: 24px;
+  }
+
+  .metrics-grid,
+  .sidebar-nav {
+    grid-template-columns: 1fr;
   }
 }
