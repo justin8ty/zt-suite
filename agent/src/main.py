@@ -4,12 +4,15 @@ import json
 import logging
 import signal
 import sys
+from pathlib import Path
 from queue import Empty, Queue
 from threading import Event, Lock, Timer
 from typing import Callable, Final, TextIO
 
+from src.collectors.posture import PostureCollector
 from src.collectors.traffic import TrafficCollector
 from src.config import settings
+from src.models.posture import PostureEnvelope
 from src.models.traffic import TrafficRecord
 
 # Buffer size limits
@@ -22,7 +25,9 @@ _shutdown_event = Event()
 # Batch buffer and timer
 _record_buffer: Queue[TrafficRecord] = Queue()
 _flush_timer: Timer | None = None
+_posture_timer: Timer | None = None
 _flush_lock = Lock()
+_posture_lock = Lock()
 
 
 def _setup_logging() -> logging.Logger:
@@ -107,6 +112,61 @@ def _start_flush_timer(
     logger.info(f"Batch flush timer started (interval: {settings.batch_interval}s)")
 
 
+def _write_posture_report(
+    logger: logging.Logger,
+    collector: PostureCollector,
+    posture_output_file: TextIO | None,
+) -> None:
+    """Collect and output one endpoint posture report."""
+    with _posture_lock:
+        try:
+            report = collector.collect()
+        except Exception as exc:  # noqa: BLE001 - posture must not stop traffic capture.
+            logger.warning("Posture collection failed: %s", exc)
+            return
+
+        envelope = PostureEnvelope(report=report)
+        json_output = envelope.model_dump_json()
+
+        if settings.output_mode == "stdout":
+            print(json_output, flush=True)
+        elif settings.output_mode == "file" and posture_output_file is not None:
+            posture_output_file.write(json_output + "\n")
+            posture_output_file.flush()
+
+        logger.info("Posture report collected for agent_id=%s", report.agent_id)
+
+
+def _start_posture_timer(
+    logger: logging.Logger,
+    posture_output_file: TextIO | None,
+) -> None:
+    """Start recurring timer to collect endpoint posture."""
+    global _posture_timer
+
+    if not settings.posture_enabled:
+        logger.info("Posture collection disabled")
+        return
+
+    collector = PostureCollector(logger=logger)
+
+    def collect_and_reschedule() -> None:
+        global _posture_timer
+
+        _write_posture_report(logger, collector, posture_output_file)
+
+        if not _shutdown_event.is_set():
+            _posture_timer = Timer(settings.posture_interval, collect_and_reschedule)
+            _posture_timer.daemon = True
+            _posture_timer.start()
+
+    # Collect once immediately, then repeat at configured interval.
+    collect_and_reschedule()
+    logger.info(
+        f"Posture timer started (interval: {settings.posture_interval}s)"
+    )
+
+
 def _create_record_handler(
     logger: logging.Logger,
     output_file: TextIO | None,
@@ -133,7 +193,7 @@ def _signal_handler(signum: int, frame: object) -> None:
 
 def main() -> int:
     """Main entry point for the traffic capture agent."""
-    global _flush_timer
+    global _flush_timer, _posture_timer
 
     logger = _setup_logging()
 
@@ -146,19 +206,37 @@ def main() -> int:
         logger.error("OUTPUT_FILE must be set when OUTPUT_MODE=file")
         return 1
 
-    # Open output file if needed
+    # Open output files if needed
     output_file: TextIO | None = None
+    posture_output_file: TextIO | None = None
     if settings.output_mode == "file" and settings.output_file:
         try:
+            output_path = Path(settings.output_file)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             output_file = open(settings.output_file, "a", encoding="utf-8")
             logger.info(f"Writing traffic records to {settings.output_file}")
         except OSError as e:
-            logger.error(f"Failed to open output file: {e}")
+            logger.error(f"Failed to open traffic output file: {e}")
+            return 1
+
+    if settings.output_mode == "file" and settings.posture_enabled:
+        try:
+            posture_output_path = Path(settings.posture_output_file)
+            posture_output_path.parent.mkdir(parents=True, exist_ok=True)
+            posture_output_file = open(
+                settings.posture_output_file, "a", encoding="utf-8"
+            )
+            logger.info(f"Writing posture reports to {settings.posture_output_file}")
+        except OSError as e:
+            logger.error(f"Failed to open posture output file: {e}")
+            if output_file is not None:
+                output_file.close()
             return 1
 
     try:
-        # Start batch flush timer
+        # Start periodic timers
         _start_flush_timer(logger, output_file)
+        _start_posture_timer(logger, posture_output_file)
 
         # Create and start collector
         collector = TrafficCollector()
@@ -190,9 +268,11 @@ def main() -> int:
         collector.stop()
         logger.info("Traffic capture stopped.")
 
-        # Stop flush timer
+        # Stop timers
         if _flush_timer is not None:
             _flush_timer.cancel()
+        if _posture_timer is not None:
+            _posture_timer.cancel()
 
         # Final flush of remaining records
         _flush_batch(logger, output_file, emergency=False)
@@ -202,6 +282,8 @@ def main() -> int:
     finally:
         if output_file is not None:
             output_file.close()
+        if posture_output_file is not None:
+            posture_output_file.close()
 
 
 if __name__ == "__main__":

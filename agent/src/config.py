@@ -40,6 +40,25 @@ class Settings(BaseSettings):
     batch_interval: int = 60
     """Interval in seconds to batch traffic records before output."""
 
+    # Agent identity and posture settings
+    agent_id: str | None = None
+    """Stable agent ID. If unset, generated and persisted locally."""
+
+    agent_version: str = "0.1.0"
+    """Agent version included in posture reports."""
+
+    agent_state_dir: str = "./data"
+    """Directory for local agent state such as generated agent ID."""
+
+    posture_enabled: bool = True
+    """Whether periodic endpoint posture collection is enabled."""
+
+    posture_interval: int = 300
+    """Interval in seconds between posture reports."""
+
+    posture_output_file: str = "./posture.jsonl"
+    """File path for posture reports when output_mode=file."""
+
 
 # Global settings instance - loaded once at module import
 settings = Settings()

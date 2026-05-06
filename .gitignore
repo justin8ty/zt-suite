@@ -30,6 +30,8 @@ htmlcov/
 .DS_Store
 Thumbs.db
 agent/traffic.jsonl
+agent/posture.jsonl
+agent/data/
 
 # Data / ML artifacts
 *.joblib
