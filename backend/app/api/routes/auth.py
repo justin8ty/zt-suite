@@ -19,6 +19,7 @@ from app.schemas.auth import (
     RefreshRequest,
     Token,
 )
+from app.schemas.user import UserRead
 from app.services.access_log import access_log_service
 from app.services.auth import auth_service
 
@@ -112,6 +113,19 @@ async def refresh_token(
 ) -> Token:
     """Refresh access token."""
     return auth_service.refresh_token(db, refresh_data.refresh_token)
+
+
+@router.get(
+    "/me",
+    response_model=UserRead,
+    summary="Get current user",
+    description="Return the authenticated user's profile and roles.",
+)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    """Get the current authenticated user."""
+    return UserRead.model_validate(current_user)
 
 
 @router.post(

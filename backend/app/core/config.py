@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./zt_suite.db"
 
+    # CORS
+    backend_cors_origins: list[str] = ["http://localhost:5173"]
+
     # JWT Configuration
     secret_key: str = "CHANGE-THIS-SECRET-KEY-IN-PRODUCTION"
     algorithm: str = "HS256"

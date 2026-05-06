@@ -6,11 +6,20 @@ from app.api.deps import DbSession, get_current_user
 from app.core.permissions import RoleName, require_roles
 from app.models.role import Role
 from app.models.user import User
-from app.schemas.role import RoleRead
 from app.schemas.user import UserCreate, UserList, UserRead, UserUpdate
 from app.services.user import user_service
 
 router = APIRouter()
+
+
+def _is_admin(user: User) -> bool:
+    """Return whether the user has the admin role."""
+    return any(role.name == RoleName.ADMIN for role in user.roles)
+
+
+def _can_access_user(target_user_id: int, current_user: User) -> bool:
+    """Return whether current user may view/update the target user."""
+    return current_user.id == target_user_id or _is_admin(current_user)
 
 
 @router.post(
@@ -68,8 +77,15 @@ async def list_users(
 async def get_user(
     user_id: int,
     db: DbSession,
+    current_user: User = Depends(get_current_user),
 ) -> UserRead:
     """Get a user by ID."""
+    if not _can_access_user(user_id, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this user",
+        )
+
     user = user_service.get_by_id(db, user_id)
     if not user:
         raise HTTPException(
@@ -89,8 +105,21 @@ async def update_user(
     user_id: int,
     user_in: UserUpdate,
     db: DbSession,
+    current_user: User = Depends(get_current_user),
 ) -> UserRead:
     """Update a user's details."""
+    if not _can_access_user(user_id, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this user",
+        )
+
+    if user_in.is_active is not None and not _is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can change account active status",
+        )
+
     user = user_service.get_by_id(db, user_id)
     if not user:
         raise HTTPException(
