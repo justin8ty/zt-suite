@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
 import { LoadingState } from '@/components/common/loading-state'
 import { PageShell } from '@/components/common/page-shell'
@@ -43,7 +44,11 @@ export function LogsPage() {
       {logsQuery.isLoading && <LoadingState message="Loading logs..." />}
       {logsQuery.isError && <ErrorState message={getApiErrorMessage(logsQuery.error)} />}
 
-      {logsQuery.data && (
+      {logsQuery.data?.logs.length === 0 && (
+        <EmptyState title="No access logs found" message="No audit events match the current filters." />
+      )}
+
+      {logsQuery.data && logsQuery.data.logs.length > 0 && (
         <TableCard>
           <table className={tableClassName}>
             <thead>

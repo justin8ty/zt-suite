@@ -18,11 +18,16 @@ const navItems: NavItem[] = [
   { label: 'Users', path: routes.users, adminOnly: true },
   { label: 'Access Logs', path: routes.logs, adminOnly: true },
   { label: 'Protected Files', path: routes.protectedFiles },
+  { label: 'Unauthorized', path: routes.unauthorized },
 ]
 
 export function AppSidebar() {
   const { isAdmin, canViewSecurityData } = useRole()
   const visibleItems = navItems.filter((item) => {
+    if (item.path === routes.unauthorized) {
+      return false
+    }
+
     if (item.adminOnly) {
       return isAdmin
     }

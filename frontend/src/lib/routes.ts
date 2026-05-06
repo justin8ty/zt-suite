@@ -8,4 +8,5 @@ export const routes = {
   alerts: '/alerts',
   logs: '/logs',
   protectedFiles: '/protected-files',
+  unauthorized: '/unauthorized',
 } as const

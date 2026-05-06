@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
+import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
 import { LoadingState } from '@/components/common/loading-state'
 import { PageShell } from '@/components/common/page-shell'
@@ -23,6 +24,7 @@ export function DevicesPage() {
   const [osType, setOsType] = useState('windows')
   const [osVersion, setOsVersion] = useState('')
   const [agentVersion, setAgentVersion] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
 
   const devicesQuery = useQuery({
     queryKey: ['devices'],
@@ -42,8 +44,15 @@ export function DevicesPage() {
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setFormError(null)
+
+    if (!hostname.trim()) {
+      setFormError('Hostname is required.')
+      return
+    }
+
     await registerMutation.mutateAsync({
-      hostname,
+      hostname: hostname.trim(),
       os_type: osType,
       os_version: osVersion || null,
       agent_version: agentVersion || null,
@@ -60,7 +69,7 @@ export function DevicesPage() {
         className="grid grid-cols-[1fr_160px_1fr_1fr_auto] gap-3 rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl max-xl:grid-cols-1"
         onSubmit={handleRegister}
       >
-        <input className={inputClassName} onChange={(event) => setHostname(event.target.value)} placeholder="hostname" value={hostname} />
+        <input className={inputClassName} onChange={(event) => setHostname(event.target.value)} placeholder="hostname" required value={hostname} />
         <select className={inputClassName} onChange={(event) => setOsType(event.target.value)} value={osType}>
           <option value="windows">windows</option>
           <option value="linux">linux</option>
@@ -73,11 +82,16 @@ export function DevicesPage() {
         </button>
       </form>
 
+      {formError && <ErrorState title="Invalid device details" message={formError} />}
       {registerMutation.isError && <ErrorState message={getApiErrorMessage(registerMutation.error)} />}
       {devicesQuery.isLoading && <LoadingState message="Loading devices..." />}
       {devicesQuery.isError && <ErrorState message={getApiErrorMessage(devicesQuery.error)} />}
 
-      {devicesQuery.data && (
+      {devicesQuery.data?.devices.length === 0 && (
+        <EmptyState title="No devices registered" message="Register a device above or start an endpoint agent." />
+      )}
+
+      {devicesQuery.data && devicesQuery.data.devices.length > 0 && (
         <TableCard>
           <table className={tableClassName}>
             <thead>

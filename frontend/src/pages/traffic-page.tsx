@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
 import { LoadingState } from '@/components/common/loading-state'
 import { PageShell } from '@/components/common/page-shell'
@@ -66,7 +67,11 @@ export function TrafficPage() {
       {trafficQuery.isLoading && <LoadingState message="Loading traffic..." />}
       {trafficQuery.isError && <ErrorState message={getApiErrorMessage(trafficQuery.error)} />}
 
-      {trafficQuery.data && (
+      {trafficQuery.data?.length === 0 && (
+        <EmptyState title="No traffic records" message="No traffic metadata has been ingested for the current filter." />
+      )}
+
+      {trafficQuery.data && trafficQuery.data.length > 0 && (
         <TableCard>
           <table className={tableClassName}>
             <thead>

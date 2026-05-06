@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
 import { LoadingState } from '@/components/common/loading-state'
 import { PageShell } from '@/components/common/page-shell'
@@ -71,7 +72,11 @@ export function AlertsPage() {
       {alertsQuery.isLoading && <LoadingState message="Loading alerts..." />}
       {alertsQuery.isError && <ErrorState message={getApiErrorMessage(alertsQuery.error)} />}
 
-      {alertsQuery.data && (
+      {alertsQuery.data?.length === 0 && (
+        <EmptyState title="No alerts found" message="No alerts match the current filters." />
+      )}
+
+      {alertsQuery.data && alertsQuery.data.length > 0 && (
         <TableCard>
           <table className={tableClassName}>
             <thead>

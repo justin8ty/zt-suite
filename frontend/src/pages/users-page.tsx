@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 
+import { ConfirmButton } from '@/components/common/confirm-button'
+import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
 import { LoadingState } from '@/components/common/loading-state'
 import { PageShell } from '@/components/common/page-shell'
@@ -21,6 +23,7 @@ export function UsersPage() {
   const queryClient = useQueryClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
 
   const usersQuery = useQuery({
     queryKey: ['users'],
@@ -49,6 +52,18 @@ export function UsersPage() {
 
   async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setFormError(null)
+
+    if (!email.includes('@')) {
+      setFormError('Enter a valid email address.')
+      return
+    }
+
+    if (password.length < 8) {
+      setFormError('Password must be at least 8 characters.')
+      return
+    }
+
     await createUserMutation.mutateAsync({ email, password })
   }
 
@@ -66,6 +81,7 @@ export function UsersPage() {
           className={inputClassName}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="user@example.com"
+          required
           type="email"
           value={email}
         />
@@ -74,6 +90,7 @@ export function UsersPage() {
           minLength={8}
           onChange={(event) => setPassword(event.target.value)}
           placeholder="Temporary password"
+          required
           type="password"
           value={password}
         />
@@ -82,6 +99,7 @@ export function UsersPage() {
         </button>
       </form>
 
+      {formError && <ErrorState title="Invalid user details" message={formError} />}
       {createUserMutation.isError && <ErrorState message={getApiErrorMessage(createUserMutation.error)} />}
       {assignRoleMutation.isError && <ErrorState message={getApiErrorMessage(assignRoleMutation.error)} />}
       {deleteUserMutation.isError && <ErrorState message={getApiErrorMessage(deleteUserMutation.error)} />}
@@ -89,7 +107,11 @@ export function UsersPage() {
       {usersQuery.isLoading && <LoadingState message="Loading users..." />}
       {usersQuery.isError && <ErrorState message={getApiErrorMessage(usersQuery.error)} />}
 
-      {usersQuery.data && (
+      {usersQuery.data?.users.length === 0 && (
+        <EmptyState title="No users found" message="Create the first user with the form above." />
+      )}
+
+      {usersQuery.data && usersQuery.data.users.length > 0 && (
         <TableCard>
           <table className={tableClassName}>
             <thead>
@@ -139,14 +161,14 @@ export function UsersPage() {
                     </select>
                   </td>
                   <td className={tdClassName}>
-                    <button
+                    <ConfirmButton
                       className={dangerButtonClassName}
+                      confirmMessage={`Delete user ${user.email}? This cannot be undone.`}
                       disabled={deleteUserMutation.isPending}
-                      onClick={() => deleteUserMutation.mutate(user.id)}
-                      type="button"
+                      onConfirm={() => deleteUserMutation.mutate(user.id)}
                     >
                       Delete
-                    </button>
+                    </ConfirmButton>
                   </td>
                 </tr>
               ))}
