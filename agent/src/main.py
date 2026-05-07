@@ -176,6 +176,9 @@ def _create_record_handler(
     def handle_record(record: TrafficRecord) -> None:
         _record_buffer.put(record)
 
+        if _record_buffer.qsize() == 1:
+            logger.info("First traffic record captured; waiting for batch flush")
+
         # Emergency flush if buffer too large
         if _record_buffer.qsize() >= BATCH_SIZE_SOFT_LIMIT:
             logger.warning(
@@ -239,7 +242,7 @@ def main() -> int:
         _start_posture_timer(logger, posture_output_file)
 
         # Create and start collector
-        collector = TrafficCollector()
+        collector = TrafficCollector(logger=logger)
         record_handler = _create_record_handler(logger, output_file)
 
         logger.info(

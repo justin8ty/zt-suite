@@ -1,6 +1,7 @@
 """Network traffic capture collector using Scapy."""
 
 import ipaddress
+import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
 from threading import Event, Thread
@@ -89,10 +90,18 @@ class TrafficCollector:
         collector.stop()
     """
 
-    def __init__(self) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         """Initialize the traffic collector."""
         self._stop_event = Event()
         self._thread: Thread | None = None
+        self._logger = logger
+        self._seen_packets = 0
+        self._emitted_records = 0
+        self._skipped_no_ip = 0
+        self._skipped_excluded_ip = 0
+        self._skipped_target_ip = 0
+        self._skipped_no_transport = 0
+        self._skipped_fragmented = 0
 
     @property
     def is_running(self) -> bool:
@@ -105,8 +114,11 @@ class TrafficCollector:
         Returns None if packet should be skipped (excluded network,
         fragmented, missing required layers, etc.)
         """
+        self._seen_packets += 1
+
         # Skip fragmented packets (non-first fragments lack port info)
         if _is_fragmented(packet):
+            self._skipped_fragmented += 1
             return None
 
         # Extract IP layer (IPv4 or IPv6)
@@ -120,15 +132,18 @@ class TrafficCollector:
             dst_ip = ip_layer.dst
         else:
             # No IP layer - skip
+            self._skipped_no_ip += 1
             return None
 
         # Check for excluded networks
         if _is_excluded_ip(src_ip) or _is_excluded_ip(dst_ip):
+            self._skipped_excluded_ip += 1
             return None
 
         # Filter by target IP if configured (e.g., only host-VM traffic)
         if settings.target_ip:
             if src_ip != settings.target_ip and dst_ip != settings.target_ip:
+                self._skipped_target_ip += 1
                 return None
 
         # Extract transport layer (TCP or UDP)
@@ -142,8 +157,10 @@ class TrafficCollector:
             tcp_flags = None
         else:
             # No TCP/UDP layer - skip
+            self._skipped_no_transport += 1
             return None
 
+        self._emitted_records += 1
         return TrafficRecord(
             timestamp=datetime.now(timezone.utc),
             src_ip=src_ip,
@@ -166,6 +183,14 @@ class TrafficCollector:
             record = self._parse_packet(packet)
             if record is not None:
                 callback(record)
+
+        if self._logger:
+            self._logger.info(
+                "Scapy sniff starting: interface=%s, bpf_filter=%s, target_ip=%s",
+                interface or "all interfaces",
+                "tcp or udp",
+                settings.target_ip or "none",
+            )
 
         # BPF filter: only TCP and UDP traffic
         # Additional filtering (localhost, multicast) done in Python
@@ -195,6 +220,13 @@ class TrafficCollector:
         if self.is_running:
             raise RuntimeError("Traffic collector is already running")
 
+        if self._logger:
+            self._logger.info(
+                "Traffic collector configured: interface=%s, target_ip=%s",
+                interface or "all interfaces",
+                settings.target_ip or "none",
+            )
+
         self._stop_event.clear()
         self._thread = Thread(
             target=self._capture_loop,
@@ -214,3 +246,17 @@ class TrafficCollector:
         if self._thread is not None:
             self._thread.join(timeout=timeout)
             self._thread = None
+
+        if self._logger:
+            self._logger.info(
+                "Traffic collector stats: seen_packets=%s, emitted_records=%s, "
+                "skipped_no_ip=%s, skipped_excluded_ip=%s, skipped_target_ip=%s, "
+                "skipped_no_transport=%s, skipped_fragmented=%s",
+                self._seen_packets,
+                self._emitted_records,
+                self._skipped_no_ip,
+                self._skipped_excluded_ip,
+                self._skipped_target_ip,
+                self._skipped_no_transport,
+                self._skipped_fragmented,
+            )
