@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     posture_output_file: str = "./posture.jsonl"
     """File path for posture reports when output_mode=file."""
 
+    feature_output_file: str = "./features.jsonl"
+    """File path for engineered traffic features when output_mode=file."""
+
     capture_stats_interval: int = 30
     """Interval in seconds between traffic capture diagnostic logs."""
 

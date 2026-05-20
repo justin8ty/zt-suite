@@ -14,8 +14,10 @@ from uuid import uuid4
 from src.collectors.posture import PostureCollector
 from src.collectors.traffic import TrafficCollector
 from src.config import settings
+from src.models.features import TrafficFeatureEnvelope
 from src.models.posture import PostureEnvelope
 from src.models.traffic import TrafficBatchEnvelope, TrafficRecord
+from src.services.feature_engineering import build_features
 from src.services.identity import get_agent_id
 
 # Shutdown event for graceful termination
@@ -50,6 +52,7 @@ def _setup_logging() -> logging.Logger:
 def _flush_batch(
     logger: logging.Logger,
     output_file: TextIO | None,
+    feature_output_file: TextIO | None,
     emergency: bool = False,
 ) -> None:
     """Flush accumulated records to output.
@@ -81,26 +84,44 @@ def _flush_batch(
             batch_id,
         )
 
+        agent_id = get_agent_id()
         envelope = TrafficBatchEnvelope(
-            agent_id=get_agent_id(),
+            agent_id=agent_id,
             batch_id=batch_id,
             record_count=len(batch),
             flushed_at=datetime.now(timezone.utc),
             emergency=emergency,
             records=batch,
         )
+        feature_envelope = TrafficFeatureEnvelope(
+            features=build_features(batch, agent_id=agent_id, batch_id=batch_id)
+        )
         json_output = envelope.model_dump_json()
+        feature_json_output = feature_envelope.model_dump_json()
 
         if settings.output_mode == "stdout":
             print(json_output, flush=True)
+            print(feature_json_output, flush=True)
         elif settings.output_mode == "file" and output_file is not None:
             output_file.write(json_output + "\n")
             output_file.flush()
+            if feature_output_file is not None:
+                feature_output_file.write(feature_json_output + "\n")
+                feature_output_file.flush()
+
+        logger.info(
+            "Engineered traffic features for batch_id=%s: packets=%s, bytes=%s, unique_dst_ips=%s",
+            batch_id,
+            feature_envelope.features.packet_count,
+            feature_envelope.features.byte_count,
+            feature_envelope.features.unique_dst_ip_count,
+        )
 
 
 def _start_flush_timer(
     logger: logging.Logger,
     output_file: TextIO | None,
+    feature_output_file: TextIO | None,
 ) -> None:
     """Start recurring timer to flush batch at configured interval."""
     global _flush_timer
@@ -108,7 +129,7 @@ def _start_flush_timer(
     def flush_and_reschedule() -> None:
         global _flush_timer
 
-        _flush_batch(logger, output_file, emergency=False)
+        _flush_batch(logger, output_file, feature_output_file, emergency=False)
 
         # Reschedule if not shutting down
         if not _shutdown_event.is_set():
@@ -222,6 +243,7 @@ def _start_posture_timer(
 def _create_record_handler(
     logger: logging.Logger,
     output_file: TextIO | None,
+    feature_output_file: TextIO | None,
 ) -> Callable[[TrafficRecord], None]:
     """Create callback that buffers records for batching."""
 
@@ -246,7 +268,7 @@ def _create_record_handler(
                 "Buffer at %s records, emergency flush triggered",
                 current_size,
             )
-            _flush_batch(logger, output_file, emergency=True)
+            _flush_batch(logger, output_file, feature_output_file, emergency=True)
 
     return handle_record
 
@@ -286,6 +308,7 @@ def main() -> int:
     # Open output files if needed
     output_file: TextIO | None = None
     posture_output_file: TextIO | None = None
+    feature_output_file: TextIO | None = None
     if settings.output_mode == "file" and settings.output_file:
         try:
             output_path = Path(settings.output_file)
@@ -310,14 +333,30 @@ def main() -> int:
                 output_file.close()
             return 1
 
+    if settings.output_mode == "file":
+        try:
+            feature_output_path = Path(settings.feature_output_file)
+            feature_output_path.parent.mkdir(parents=True, exist_ok=True)
+            feature_output_file = open(
+                settings.feature_output_file, "a", encoding="utf-8"
+            )
+            logger.info(f"Writing traffic features to {settings.feature_output_file}")
+        except OSError as e:
+            logger.error(f"Failed to open feature output file: {e}")
+            if output_file is not None:
+                output_file.close()
+            if posture_output_file is not None:
+                posture_output_file.close()
+            return 1
+
     try:
         # Start periodic timers
-        _start_flush_timer(logger, output_file)
+        _start_flush_timer(logger, output_file, feature_output_file)
         _start_posture_timer(logger, posture_output_file)
 
         # Create and start collector
         collector = TrafficCollector(logger=logger)
-        record_handler = _create_record_handler(logger, output_file)
+        record_handler = _create_record_handler(logger, output_file, feature_output_file)
 
         logger.info(
             f"Starting traffic capture on interface: "
@@ -356,7 +395,7 @@ def main() -> int:
             _capture_stats_timer.cancel()
 
         # Final flush of remaining records
-        _flush_batch(logger, output_file, emergency=False)
+        _flush_batch(logger, output_file, feature_output_file, emergency=False)
 
         return 0
 
@@ -365,6 +404,8 @@ def main() -> int:
             output_file.close()
         if posture_output_file is not None:
             posture_output_file.close()
+        if feature_output_file is not None:
+            feature_output_file.close()
 
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ htmlcov/
 Thumbs.db
 agent/traffic.jsonl
 agent/posture.jsonl
+agent/features.jsonl
 agent/data/
 
 # Data / ML artifacts
