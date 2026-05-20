@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TCPFlags(BaseModel):
@@ -32,3 +32,15 @@ class TrafficRecord(BaseModel):
     protocol: Literal["TCP", "UDP"]
     packet_size: int
     tcp_flags: TCPFlags | None = None  # None for UDP packets
+
+
+class TrafficBatchEnvelope(BaseModel):
+    """Envelope for batched traffic records."""
+
+    type: Literal["traffic_batch"] = "traffic_batch"
+    agent_id: str
+    batch_id: str
+    record_count: int = Field(ge=0)
+    flushed_at: datetime
+    emergency: bool = False
+    records: list[TrafficRecord]

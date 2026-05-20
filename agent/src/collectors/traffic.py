@@ -9,6 +9,7 @@ from typing import Final
 
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
+from scapy.all import get_if_list
 from scapy.packet import Packet
 from scapy.sendrecv import sniff
 
@@ -68,6 +69,11 @@ def _extract_tcp_flags(tcp_layer: TCP) -> TCPFlags:
     )
 
 
+def list_capture_interfaces() -> list[str]:
+    """Return Scapy capture interface names."""
+    return list(get_if_list())
+
+
 class TrafficCollector:
     """Captures network traffic and extracts metadata for anomaly detection.
 
@@ -107,6 +113,18 @@ class TrafficCollector:
     def is_running(self) -> bool:
         """Check if the collector is currently capturing."""
         return self._thread is not None and self._thread.is_alive()
+
+    def stats(self) -> dict[str, int]:
+        """Return current capture counters for diagnostics."""
+        return {
+            "seen_packets": self._seen_packets,
+            "emitted_records": self._emitted_records,
+            "skipped_no_ip": self._skipped_no_ip,
+            "skipped_excluded_ip": self._skipped_excluded_ip,
+            "skipped_target_ip": self._skipped_target_ip,
+            "skipped_no_transport": self._skipped_no_transport,
+            "skipped_fragmented": self._skipped_fragmented,
+        }
 
     def _parse_packet(self, packet: Packet) -> TrafficRecord | None:
         """Parse a captured packet and extract metadata.
@@ -194,13 +212,21 @@ class TrafficCollector:
 
         # BPF filter: only TCP and UDP traffic
         # Additional filtering (localhost, multicast) done in Python
-        sniff(
-            iface=interface,
-            filter="tcp or udp",
-            prn=packet_handler,
-            stop_filter=lambda _: self._stop_event.is_set(),
-            store=False,  # Don't accumulate packets in memory
-        )
+        try:
+            sniff(
+                iface=interface,
+                filter="tcp or udp",
+                prn=packet_handler,
+                stop_filter=lambda _: self._stop_event.is_set(),
+                store=False,  # Don't accumulate packets in memory
+            )
+        except Exception:
+            if self._logger:
+                self._logger.exception(
+                    "Scapy sniff failed. Check Admin/root privileges, Npcap/libpcap, "
+                    "and ZT_AGENT_INTERFACE."
+                )
+            self._stop_event.set()
 
     def start(
         self,
@@ -221,11 +247,21 @@ class TrafficCollector:
             raise RuntimeError("Traffic collector is already running")
 
         if self._logger:
+            available_interfaces = list_capture_interfaces()
             self._logger.info(
                 "Traffic collector configured: interface=%s, target_ip=%s",
                 interface or "all interfaces",
                 settings.target_ip or "none",
             )
+            self._logger.info(
+                "Available Scapy interfaces: %s",
+                ", ".join(available_interfaces) if available_interfaces else "none",
+            )
+            if interface and interface not in available_interfaces:
+                self._logger.warning(
+                    "Configured interface not found in Scapy interface list: %s",
+                    interface,
+                )
 
         self._stop_event.clear()
         self._thread = Thread(

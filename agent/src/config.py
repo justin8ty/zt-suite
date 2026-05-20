@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     batch_interval: int = 60
     """Interval in seconds to batch traffic records before output."""
 
+    batch_size_soft_limit: int = 50_000
+    """Record count that triggers an emergency traffic batch flush."""
+
+    batch_size_hard_limit: int = 100_000
+    """Maximum queued traffic records before new records are dropped."""
+
     # Agent identity and posture settings
     agent_id: str | None = None
     """Stable agent ID. If unset, generated and persisted locally."""
@@ -58,6 +64,9 @@ class Settings(BaseSettings):
 
     posture_output_file: str = "./posture.jsonl"
     """File path for posture reports when output_mode=file."""
+
+    capture_stats_interval: int = 30
+    """Interval in seconds between traffic capture diagnostic logs."""
 
 
 # Global settings instance - loaded once at module import

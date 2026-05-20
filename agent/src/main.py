@@ -1,23 +1,22 @@
 """ZT Suite Traffic Capture Agent entry point."""
 
-import json
 import logging
+import platform
 import signal
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from queue import Empty, Queue
 from threading import Event, Lock, Timer
-from typing import Callable, Final, TextIO
+from typing import Callable, TextIO
+from uuid import uuid4
 
 from src.collectors.posture import PostureCollector
 from src.collectors.traffic import TrafficCollector
 from src.config import settings
 from src.models.posture import PostureEnvelope
-from src.models.traffic import TrafficRecord
-
-# Buffer size limits
-BATCH_SIZE_SOFT_LIMIT: Final[int] = 50_000  # Emergency flush trigger
-BATCH_SIZE_HARD_LIMIT: Final[int] = 100_000  # Safety net (should never hit)
+from src.models.traffic import TrafficBatchEnvelope, TrafficRecord
+from src.services.identity import get_agent_id
 
 # Shutdown event for graceful termination
 _shutdown_event = Event()
@@ -26,6 +25,7 @@ _shutdown_event = Event()
 _record_buffer: Queue[TrafficRecord] = Queue()
 _flush_timer: Timer | None = None
 _posture_timer: Timer | None = None
+_capture_stats_timer: Timer | None = None
 _flush_lock = Lock()
 _posture_lock = Lock()
 
@@ -73,11 +73,23 @@ def _flush_batch(
 
         # Log flush
         flush_type = "emergency" if emergency else "scheduled"
-        logger.info(f"Flushing {len(batch)} records ({flush_type})")
+        batch_id = str(uuid4())
+        logger.info(
+            "Flushing %s records (%s), batch_id=%s",
+            len(batch),
+            flush_type,
+            batch_id,
+        )
 
-        # Output batch as JSON array
-        batch_json = [record.model_dump(mode="json") for record in batch]
-        json_output = json.dumps(batch_json)
+        envelope = TrafficBatchEnvelope(
+            agent_id=get_agent_id(),
+            batch_id=batch_id,
+            record_count=len(batch),
+            flushed_at=datetime.now(timezone.utc),
+            emergency=emergency,
+            records=batch,
+        )
+        json_output = envelope.model_dump_json()
 
         if settings.output_mode == "stdout":
             print(json_output, flush=True)
@@ -137,6 +149,46 @@ def _write_posture_report(
         logger.info("Posture report collected for agent_id=%s", report.agent_id)
 
 
+def _start_capture_stats_timer(
+    logger: logging.Logger,
+    collector: TrafficCollector,
+) -> None:
+    """Start recurring traffic capture diagnostic logs."""
+    global _capture_stats_timer
+
+    def log_and_reschedule() -> None:
+        global _capture_stats_timer
+
+        stats = collector.stats()
+        logger.info(
+            "Traffic capture stats: seen=%s, emitted=%s, buffer=%s, "
+            "skipped_excluded_ip=%s, skipped_target_ip=%s, skipped_no_ip=%s, "
+            "skipped_no_transport=%s, skipped_fragmented=%s",
+            stats["seen_packets"],
+            stats["emitted_records"],
+            _record_buffer.qsize(),
+            stats["skipped_excluded_ip"],
+            stats["skipped_target_ip"],
+            stats["skipped_no_ip"],
+            stats["skipped_no_transport"],
+            stats["skipped_fragmented"],
+        )
+
+        if not _shutdown_event.is_set():
+            _capture_stats_timer = Timer(
+                settings.capture_stats_interval, log_and_reschedule
+            )
+            _capture_stats_timer.daemon = True
+            _capture_stats_timer.start()
+
+    _capture_stats_timer = Timer(settings.capture_stats_interval, log_and_reschedule)
+    _capture_stats_timer.daemon = True
+    _capture_stats_timer.start()
+    logger.info(
+        "Capture stats timer started (interval: %ss)", settings.capture_stats_interval
+    )
+
+
 def _start_posture_timer(
     logger: logging.Logger,
     posture_output_file: TextIO | None,
@@ -174,15 +226,25 @@ def _create_record_handler(
     """Create callback that buffers records for batching."""
 
     def handle_record(record: TrafficRecord) -> None:
-        _record_buffer.put(record)
+        current_size = _record_buffer.qsize()
+        if current_size >= settings.batch_size_hard_limit:
+            logger.error(
+                "Traffic buffer hard limit reached (%s); dropping newest record",
+                settings.batch_size_hard_limit,
+            )
+            return
 
-        if _record_buffer.qsize() == 1:
+        _record_buffer.put(record)
+        current_size = _record_buffer.qsize()
+
+        if current_size == 1:
             logger.info("First traffic record captured; waiting for batch flush")
 
         # Emergency flush if buffer too large
-        if _record_buffer.qsize() >= BATCH_SIZE_SOFT_LIMIT:
+        if current_size >= settings.batch_size_soft_limit:
             logger.warning(
-                f"Buffer at {_record_buffer.qsize()} records, emergency flush triggered"
+                "Buffer at %s records, emergency flush triggered",
+                current_size,
             )
             _flush_batch(logger, output_file, emergency=True)
 
@@ -196,7 +258,7 @@ def _signal_handler(signum: int, frame: object) -> None:
 
 def main() -> int:
     """Main entry point for the traffic capture agent."""
-    global _flush_timer, _posture_timer
+    global _flush_timer, _posture_timer, _capture_stats_timer
 
     logger = _setup_logging()
 
@@ -208,6 +270,18 @@ def main() -> int:
     if settings.output_mode == "file" and not settings.output_file:
         logger.error("OUTPUT_FILE must be set when OUTPUT_MODE=file")
         return 1
+
+    if settings.target_ip:
+        logger.warning(
+            "ZT_AGENT_TARGET_IP is set to %s; traffic not matching this IP will be skipped",
+            settings.target_ip,
+        )
+
+    if platform.system().lower() == "windows" and not settings.interface:
+        logger.warning(
+            "ZT_AGENT_INTERFACE is empty on Windows; if capture is empty, set it to "
+            "one of the logged Scapy interface names and run as Administrator with Npcap installed"
+        )
 
     # Open output files if needed
     output_file: TextIO | None = None
@@ -250,6 +324,8 @@ def main() -> int:
             f"{settings.interface or 'all interfaces'}"
         )
 
+        _start_capture_stats_timer(logger, collector)
+
         try:
             collector.start(callback=record_handler, interface=settings.interface)
         except PermissionError:
@@ -276,6 +352,8 @@ def main() -> int:
             _flush_timer.cancel()
         if _posture_timer is not None:
             _posture_timer.cancel()
+        if _capture_stats_timer is not None:
+            _capture_stats_timer.cancel()
 
         # Final flush of remaining records
         _flush_batch(logger, output_file, emergency=False)
