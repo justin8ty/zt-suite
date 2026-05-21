@@ -68,6 +68,27 @@ class Settings(BaseSettings):
     feature_output_file: str = "./features.jsonl"
     """File path for engineered traffic features when output_mode=file."""
 
+    anomaly_enabled: bool = True
+    """Whether local anomaly detection is enabled."""
+
+    anomaly_model_path: str = "./src/ml/anomaly_model.joblib"
+    """Path to local anomaly model artifact."""
+
+    anomaly_threshold: float = 0.7
+    """Score threshold for generating local alerts."""
+
+    alert_output_file: str = "./alerts.jsonl"
+    """File path for local alerts when output_mode=file."""
+
+    heuristic_unique_dst_port_threshold: int = 30
+    """Heuristic alert signal for port scan/fan-out behavior."""
+
+    heuristic_syn_ratio_threshold: float = 0.6
+    """Heuristic alert signal for SYN-heavy traffic."""
+
+    heuristic_packets_per_minute_threshold: float = 1000.0
+    """Heuristic alert signal for high traffic volume."""
+
     capture_stats_interval: int = 30
     """Interval in seconds between traffic capture diagnostic logs."""
 

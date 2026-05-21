@@ -32,6 +32,7 @@ Thumbs.db
 agent/traffic.jsonl
 agent/posture.jsonl
 agent/features.jsonl
+agent/alerts.jsonl
 agent/data/
 
 # Data / ML artifacts
