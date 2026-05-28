@@ -1,18 +1,5 @@
 # Product Requirements Document (PRD)
 
----
-
-## Document Header
-
-* **Product Name:** Zero-Trust Security Suite (ZT Suite)
-* **Industry:** Cybersecurity (Network & Cloud Security, Cryptography & Data Security)
-* **Document Version:** v1.0
-* **Creation Date:** 2026-01-07
-* **Product Manager:** Tan Jin Yi
-* **Review Status:** Draft – Pending Supervisor Review
-
----
-
 ## 1. Background & Context
 
 ### 1.1 Market Analysis
@@ -40,7 +27,7 @@
 * ≥95% authentication attempts protected by MFA
 * ≥90% endpoint compliance detection accuracy (simulated environment)
 * ≥80% precision in detecting injected anomalous traffic patterns
-* <2s dashboard data refresh latency
+* Target <2s dashboard data refresh latency; current frontend prototype uses 10s polling for most dashboard/security pages
 * 100% access events logged and auditable
 
 ### 1.3 User Personas
@@ -68,15 +55,19 @@
 * Password-based authentication
 * MFA (TOTP-based)
 * Role-Based Access Control (RBAC)
-* JWT-based session management
+* JWT-based session management with access and refresh tokens
 * Full access and authentication logging
+* Prototype protected-resource access flow using MFA + RBAC + compliant-device gate
 
 #### 2. Endpoint Posture Verification
 
 * Client-side posture reporting (cooperative model)
 * OS version detection
-* Patch level and update status
+* Hostname, architecture, uptime, boot time, and network interface collection
+* Firewall status check
 * Antivirus presence check
+* Disk encryption status check
+* Patch/update status target, currently best-effort/prototype-level
 * Pre-access compliance evaluation
 * Periodic posture re-validation
 
@@ -89,12 +80,15 @@
   - Unique destination count
   - Port distribution analysis
   - TCP flag ratios
-* Agent-side anomaly detection using pre-trained Isolation Forest
+* Agent-side anomaly detection using a local model artifact when available
+* Heuristic fallback for prototype detection when the model artifact is unavailable
 * Traffic and alert reporting to central backend
 
 #### 4. Anomaly Detection Engine
 
-* Pre-trained Isolation Forest model (trained on public labeled dataset)
+* Target model: pre-trained Isolation Forest trained on public labeled dataset
+* Current implementation supports generic joblib model loading plus heuristic fallback
+* Separate `/ids` workspace supports supervised flow-based binary classification experiments using Random Forest, XGBoost, and MLP
 * Edge-based detection (runs on agent, not backend)
 * Detection of:
 
@@ -110,8 +104,9 @@
 * Unified login for administrators
 * Real-time logs and alerts
 * Endpoint compliance overview
-* Anomaly visualization (charts, tables)
+* Current anomaly display through metrics/tables; target anomaly visualization includes charts and richer trend views
 * Basic alert acknowledgment workflow
+* Protected Files demo page for validating the full access-control chain
 
 ---
 
@@ -147,20 +142,23 @@
 
 1. User attempts login
 2. Credential verification
-3. Device trust check (skip MFA if trusted device token valid)
-4. MFA challenge (if device not trusted)
-5. Endpoint posture check
-6. RBAC authorization decision
-7. Access granted / denied
-8. Event logged
+3. MFA challenge if MFA is enabled for the user
+4. JWT access and refresh tokens issued after successful authentication
+5. Protected resource request includes selected/registered device identifier via `X-Device-ID`
+6. Endpoint posture compliance check
+7. RBAC authorization decision
+8. Access granted / denied
+9. Event logged
+
+**Target enhancement:** trusted-device tokens may later support 30-day MFA bypass. The current prototype does not yet implement `device_token`-based MFA bypass.
 
 ### 3.3 Security Monitoring Flow
 
 1. Agent captures traffic
 2. Agent extracts features (per 60s batch)
-3. Agent runs anomaly detection (local inference)
-4. If anomaly: Agent generates alert
-5. Agent POSTs traffic batch + alerts to backend
+3. Agent runs anomaly detection locally using a model if available, otherwise heuristic fallback
+4. If anomaly: Agent generates alert with severity and reason codes
+5. Agent POSTs traffic batch + alerts to backend when reporting is enabled
 6. Dashboard displays alerts and traffic history
 
 ---
@@ -170,15 +168,20 @@
 ```mermaid
 flowchart LR
     User -->|Login| IAM
-    IAM --> DeviceCheck{Device Trusted?}
-    DeviceCheck -->|Yes| Posture[Endpoint Posture Check]
-    DeviceCheck -->|No| MFA
-    MFA --> Posture
-    Posture -->|Compliant| Access
+    IAM --> MFA{MFA Enabled?}
+    MFA -->|Challenge Required| MFAValidate[MFA Validation]
+    MFA -->|No Challenge| Session[JWT Session]
+    MFAValidate --> Session
+    Session --> DeviceHeader[X-Device-ID]
+    DeviceHeader --> Posture[Endpoint Posture Check]
+    Posture -->|Compliant| RBAC[RBAC Authorization]
     Posture -->|Non-compliant| Deny
+    RBAC -->|Allowed| Access
+    RBAC -->|Denied| Deny
     Access --> Traffic[Network Traffic]
-    Traffic --> Detection[Anomaly Engine]
-    Detection --> Dashboard
+    Traffic --> Detection[Agent Anomaly Detection]
+    Detection --> Alerts[Alerts]
+    Alerts --> Dashboard
     IAM --> Logs
     Logs --> Dashboard
 ```
@@ -195,12 +198,12 @@ flowchart LR
 
 ### Phase Breakdown
 
-| Phase             | Scope                            | Duration |
-| ----------------- | -------------------------------- | -------- |
-| P0 – MVP          | IAM, MFA, RBAC, basic dashboard  | 6 weeks  |
-| P1 – Enhancement  | Endpoint posture checks, logging | 5 weeks  |
-| P2 – Optimization | Anomaly detection, tuning        | 5 weeks  |
-| P3 – Innovation   | Explainability, UI refinement    | 4 weeks  |
+| Phase             | Scope                            |
+| ----------------- | -------------------------------- |
+| P0 – MVP          | IAM, MFA, RBAC, basic dashboard  |
+| P1 – Enhancement  | Endpoint posture checks, logging |
+| P2 – Optimization | Anomaly detection, tuning        |
+| P3 – Innovation   | Explainability, UI refinement    |
 
 **Prioritization Rationale:**
 
@@ -219,18 +222,23 @@ flowchart LR
 * Central backend with REST APIs (storage and dashboard serving)
 * Web-based frontend dashboard
 * Edge-based processing: Agents perform feature engineering and ML inference locally
-* Pre-trained ML model shipped with agent (no runtime training)
+* Target: pre-trained ML model shipped with agent (no runtime training)
+* Current: agent loads a local joblib model when present and falls back to heuristic detection when absent
+* Agent reporting endpoints currently include `POST /api/devices`, `POST /api/devices/{device_id}/posture`, `POST /api/traffic`, and `POST /api/alerts`
 * Simulated endpoints and network
 
 ### 6.2 Technology Stack
 
-* Backend: Python 3.11+ (FastAPI, SQLAlchemy, Pydantic)
-* Frontend: React 18 + TypeScript (Vite, TanStack Query, Tailwind, Recharts)
+* Backend: Python 3.13+ currently (FastAPI, SQLAlchemy, Pydantic)
+* Frontend: React 19 + TypeScript 6 (Vite 8, TanStack Query, Tailwind CSS 4)
+* Frontend routing/state/forms: React Router 7, Zustand, React Hook Form, Zod, Axios
 * Database: SQLite
 * Auth: JWT (python-jose), TOTP (pyotp), Argon2id (passlib)
-* ML: scikit-learn (Isolation Forest)
-* Endpoint Agent: Python (httpx, psutil, scapy)
-* Tooling: uv, ruff, mypy, pytest
+* Agent runtime: Python 3.14+ currently (httpx, psutil, scapy, Pydantic, joblib)
+* IDS workspace: Python 3.13+ currently (pandas, numpy, scikit-learn, XGBoost, joblib)
+* ML target: pre-trained Isolation Forest for endpoint anomaly detection
+* ML current: generic joblib model support, heuristic fallback in agent, supervised classifier experiments in `/ids`
+* Tooling: uv, ruff, mypy, pytest, ESLint, TypeScript
 
 ### 6.3 Performance Requirements
 
@@ -242,15 +250,31 @@ flowchart LR
 
 * Password hashing (Argon2id)
 * Encrypted communication (TLS)
-* Secure token storage
-* Device trust tokens (30-day MFA bypass)
+* Secure token storage target; current frontend prototype persists tokens in client-side storage and should be hardened later
+* Device trust tokens (30-day MFA bypass) target; not implemented in current prototype
 * Audit-ready structured logs
+
+### 6.5 Current Implementation / Prototype Deviations
+
+The current implementation intentionally differs from the target PRD in several areas. These gaps should be resolved later so the implementation and PRD align perfectly.
+
+* **Device trust token flow:** The target 30-day trusted-device MFA bypass is not implemented yet. Current login uses password + MFA challenge, while protected-resource access checks device compliance using an `X-Device-ID` header.
+* **Agent authentication:** Current agent backend reporting uses a user JWT access token. A dedicated agent identity/token model is still needed for production-like deployment.
+* **Posture reporting endpoint:** Current posture submission is nested under devices: `POST /api/devices/{device_id}/posture`, not a standalone `POST /api/posture` endpoint.
+* **Posture fidelity:** Firewall, antivirus, and disk encryption are implemented as best-effort checks. Patch/update status is currently incomplete and may be reported conservatively.
+* **Anomaly model:** The PRD target remains a shipped pre-trained Isolation Forest model. Current agent code supports local joblib inference but uses heuristic fallback if the model artifact is missing.
+* **IDS workspace:** `/ids` is separate from the runtime agent. It currently supports CICFlowMeter-style flow CSV training/inference and supervised classifiers (Random Forest, XGBoost, MLP) for experimentation and attack-simulation evaluation.
+* **Dashboard visualization:** Current frontend uses polling, metrics, forms, and tables. Rich chart-based anomaly visualization is still a target enhancement.
+* **Frontend token storage:** Current prototype persists auth state client-side for usability. Secure/hardened token storage remains a future security hardening item.
+* **Runtime/service deployment:** The agent currently runs as a Python process. Managed systemd/Windows Service packaging remains a deployment target.
 
 **Known Limitations & Mitigation:**
 
 * Cooperative posture reporting → clearly documented trust assumptions
 * No hardware-backed attestation → simulation scope only
-* Pre-trained ML model on public dataset → may not cover all attack patterns
+* Prototype agent authentication uses user JWTs → replace with dedicated agent identity/token model
+* Missing model artifact falls back to heuristics → ship and validate the target model artifact before final evaluation
+* Pre-trained/public-dataset model → may not cover all attack patterns
 * No cross-device correlation → agent-based detection is per-endpoint only
 
 ---

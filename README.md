@@ -1,6 +1,11 @@
 # Zero-Trust Security Suite (ZT Suite)
 
-An FYP zero-trust security implementation.
+An FYP zero-trust security implementation for SME environments — identity-centric access control with MFA, endpoint posture verification, network traffic monitoring, and ML-based anomaly detection.
+
+See [PRD.md](./PRD.md) for product requirements.
+See [CHECKLIST.md](./CHECKLIST.md) for implementation progress.
+
+---
 
 ## Prerequisites
 
@@ -24,18 +29,45 @@ When you run sudo command, Linux uses a restricted PATH different from user's pa
 sudo ~/.local/bin/uv run python -m src.main
 ```
 
-## Project Structure
+---
 
-See [AGENTS.md](./AGENTS.md) for detailed project structure and development guidelines.
+## Build / Lint / Test Commands
 
-See [PRD.md](./PRD.md) for product requirements.
+### Backend
 
-See [CHECKLIST.md](./CHECKLIST.md) for implementation progress.
+```bash
+cd backend
+uv sync
+uv sync --dev
+uv run uvicorn app.main:app --reload
+uv run pytest
+uv run pytest tests/test_auth.py
+uv run pytest tests/test_auth.py::test_login -v
+uv run pytest -k "login" -v
+uv run pytest --cov=app --cov-report=html
+uv run ruff check . && uv run ruff format .
+uv run mypy .
+uv run alembic upgrade head
+uv run alembic revision --autogenerate -m "msg"
+```
 
-## Technicals
+### Frontend
 
-batching:
+```bash
+cd frontend
+npm install
+npm run dev
+npm run build
+npm run preview
+npm test
+npm run lint
+npm run typecheck
+```
 
-Batch interval: 60s default
-Soft limit: 50,000 records
-Hard limit: 100,000 records
+### Endpoint Agent
+
+```bash
+cd agent
+uv sync
+sudo uv run python -m src.main
+```
