@@ -81,7 +81,7 @@
 * Unified login for administrators
 * Real-time logs and alerts
 * Endpoint compliance overview
-* Current anomaly display through metrics/tables; target anomaly visualization includes charts and richer trend views
+* Current anomaly display through metrics, tables, and lightweight charts for alert severity, traffic volume, and device compliance
 * Basic alert acknowledgment workflow
 * Protected Files demo page for validating the full access-control chain
 
@@ -94,7 +94,7 @@
 1. User attempts login
 2. Credential verification
 3. MFA challenge if MFA is enabled for the user
-4. JWT access and refresh tokens issued after successful authentication
+4. JWT access token issued after successful authentication; refresh token is set as an HttpOnly cookie
 5. Protected resource request includes selected/registered device identifier via `X-Device-ID`
 6. Endpoint posture compliance check
 7. RBAC authorization decision
@@ -160,7 +160,7 @@
 
 * Password hashing (Argon2id)
 * Encrypted communication (TLS)
-* Secure token storage target; current frontend prototype persists access/refresh auth state client-side for usability and should be hardened later
+* Secure browser token handling: access tokens are kept in frontend memory only; refresh tokens are stored as HttpOnly cookies and rotated on refresh
 * Trusted-device tokens support optional 30-day MFA bypass after successful MFA login; raw trusted-device tokens are returned as HttpOnly cookies and stored server-side only as hashes
 * Dedicated device-scoped agent tokens are stored server-side only as hashes and used for endpoint telemetry reporting
 * Audit-ready structured logs
@@ -171,7 +171,6 @@ The current implementation intentionally differs from the target PRD in several 
 
 * **Anomaly model:** The PRD target remains a shipped pre-trained Isolation Forest model. Current agent code supports local joblib inference but uses heuristic fallback if the model artifact is missing.
 * **IDS workspace:** `/ids` is separate from the runtime agent. It currently supports CICFlowMeter-style flow CSV training/inference and supervised classifiers (Random Forest, XGBoost, MLP) for experimentation and attack-simulation evaluation.
-* **Frontend token storage:** Current prototype persists auth state client-side for usability. Secure/hardened token storage remains a future security hardening item.
 * **Runtime/service deployment:** The agent currently runs as a Python process. Managed systemd/Windows Service packaging remains a deployment target.
 
 **Known Limitations & Mitigation:**

@@ -31,13 +31,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableAxiosRequestConfig | undefined
-    const refreshToken = useAuthStore.getState().refreshToken
-
     if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
       return Promise.reject(error)
     }
 
-    if (!refreshToken) {
+    if (originalRequest.url?.includes('/api/auth/refresh')) {
       useAuthStore.getState().clearAuth()
       return Promise.reject(error)
     }
@@ -47,9 +45,7 @@ apiClient.interceptors.response.use(
     try {
       const response = await axios.post<TokenResponse>(
         `${API_BASE_URL}/api/auth/refresh`,
-        {
-          refresh_token: refreshToken,
-        },
+        {},
         { withCredentials: true },
       )
 

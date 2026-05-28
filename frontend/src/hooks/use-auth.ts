@@ -21,14 +21,11 @@ export function useCurrentUser() {
 
 export function useLogout() {
   const queryClient = useQueryClient()
-  const refreshToken = useAuthStore((state) => state.refreshToken)
   const clearAuth = useAuthStore((state) => state.clearAuth)
 
   return useMutation({
     mutationFn: async () => {
-      if (refreshToken) {
-        await authService.logout({ refresh_token: refreshToken })
-      }
+      await authService.logout()
     },
     onSettled: () => {
       clearAuth()

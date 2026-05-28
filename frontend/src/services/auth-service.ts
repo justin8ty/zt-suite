@@ -31,12 +31,12 @@ export const authService = {
     return response.data
   },
 
-  async refresh(payload: RefreshRequest): Promise<TokenResponse> {
+  async refresh(payload: RefreshRequest = {}): Promise<TokenResponse> {
     const response = await apiClient.post<TokenResponse>('/api/auth/refresh', payload)
     return response.data
   },
 
-  async logout(payload: RefreshRequest): Promise<void> {
+  async logout(payload: RefreshRequest = {}): Promise<void> {
     await apiClient.post('/api/auth/logout', payload)
   },
 

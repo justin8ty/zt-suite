@@ -10,12 +10,17 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class Token(BaseModel):
-    """JWT Token schema."""
+class AccessToken(BaseModel):
+    """Access token response schema exposed to browser clients."""
 
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
+
+
+class Token(AccessToken):
+    """Internal token pair schema."""
+
+    refresh_token: str
 
 
 class TokenPayload(BaseModel):
@@ -26,7 +31,7 @@ class TokenPayload(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    """Refresh token request schema."""
+    """Legacy refresh token request schema for non-browser clients."""
 
     refresh_token: str
 

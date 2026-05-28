@@ -7,7 +7,6 @@ export interface LoginRequest {
 
 export interface TokenResponse {
   access_token: string
-  refresh_token: string
   token_type: 'bearer' | string
 }
 
@@ -19,7 +18,7 @@ export interface MFARequiredResponse {
 export type LoginResponse = TokenResponse | MFARequiredResponse
 
 export interface RefreshRequest {
-  refresh_token: string
+  refresh_token?: string
 }
 
 export interface MFAValidateRequest {
@@ -40,7 +39,6 @@ export interface MFAVerifyRequest {
 
 export interface AuthStateSnapshot {
   accessToken: string | null
-  refreshToken: string | null
   mfaTempToken: string | null
   currentUser: User | null
 }

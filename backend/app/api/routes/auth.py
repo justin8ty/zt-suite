@@ -1,6 +1,6 @@
 """Authentication API routes."""
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Body, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import DbSession, get_current_user
@@ -11,6 +11,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.schemas.auth import (
+    AccessToken,
     LoginRequest,
     MFAEnrollResponse,
     MFARequiredResponse,
@@ -28,6 +29,42 @@ router = APIRouter()
 settings = get_settings()
 
 
+def set_refresh_token_cookie(response: Response, token: str) -> None:
+    """Attach refresh token as an HttpOnly cookie."""
+    response.set_cookie(
+        key=settings.refresh_token_cookie_name,
+        value=token,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        httponly=True,
+        secure=settings.refresh_token_cookie_secure,
+        samesite=settings.refresh_token_cookie_samesite,
+    )
+
+
+def clear_refresh_token_cookie(response: Response) -> None:
+    """Remove refresh token cookie from the browser."""
+    response.delete_cookie(
+        key=settings.refresh_token_cookie_name,
+        httponly=True,
+        secure=settings.refresh_token_cookie_secure,
+        samesite=settings.refresh_token_cookie_samesite,
+    )
+
+
+def resolve_refresh_token(
+    refresh_data: RefreshRequest | None, refresh_token_cookie: str | None
+) -> str:
+    """Read refresh token from HttpOnly cookie, with request body fallback for API clients."""
+    if refresh_token_cookie:
+        return refresh_token_cookie
+    if refresh_data and refresh_data.refresh_token:
+        return refresh_data.refresh_token
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Refresh token missing",
+    )
+
+
 def set_trusted_device_cookie(response: Response, token: str) -> None:
     """Attach trusted-device token as an HttpOnly cookie."""
     response.set_cookie(
@@ -42,13 +79,14 @@ def set_trusted_device_cookie(response: Response, token: str) -> None:
 
 @router.post(
     "/login",
-    response_model=Token | MFARequiredResponse,
+    response_model=AccessToken | MFARequiredResponse,
     summary="Login with email and password",
     description="Authenticate user. Returns Access Token OR MFA Challenge if enabled.",
 )
 async def login(
     login_data: LoginRequest,
     db: DbSession,
+    response: Response,
     trusted_device_token: str | None = Cookie(
         default=None, alias=settings.trusted_device_cookie_name
     ),
@@ -70,7 +108,9 @@ async def login(
                     resource="/api/auth/login",
                     details=f"MFA bypassed by trusted device {trusted_device.id}",
                 )
-                return auth_service.create_tokens(db, user)
+                tokens = auth_service.create_tokens(db, user)
+                set_refresh_token_cookie(response, tokens.refresh_token)
+                return tokens
 
             if trusted_device_token:
                 access_log_service.log_access(
@@ -100,7 +140,9 @@ async def login(
             user_id=user.id,
             resource="/api/auth/login",
         )
-        return auth_service.create_tokens(db, user)
+        tokens = auth_service.create_tokens(db, user)
+        set_refresh_token_cookie(response, tokens.refresh_token)
+        return tokens
 
     except HTTPException as e:
         # Try to find user ID for logging if possible (not easy here without re-querying)
@@ -118,11 +160,12 @@ async def login(
 # Support for Swagger UI "Authorize" button (OAuth2 form data)
 @router.post(
     "/login/form",
-    response_model=Token,
+    response_model=AccessToken,
     include_in_schema=False,
 )
 async def login_form(
     db: DbSession,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Token:
     """Login using form data (for Swagger UI).
@@ -139,21 +182,30 @@ async def login_form(
             detail="MFA is enabled. Please use the /login endpoint or MFA flow.",
         )
 
-    return auth_service.create_tokens(db, user)
+    tokens = auth_service.create_tokens(db, user)
+    set_refresh_token_cookie(response, tokens.refresh_token)
+    return tokens
 
 
 @router.post(
     "/refresh",
-    response_model=Token,
+    response_model=AccessToken,
     summary="Refresh access token",
-    description="Get new access/refresh tokens using a valid refresh token.",
+    description="Get new access token using the HttpOnly refresh-token cookie.",
 )
 async def refresh_token(
-    refresh_data: RefreshRequest,
     db: DbSession,
+    response: Response,
+    refresh_data: RefreshRequest | None = Body(default=None),
+    refresh_token_cookie: str | None = Cookie(
+        default=None, alias=settings.refresh_token_cookie_name
+    ),
 ) -> Token:
     """Refresh access token."""
-    return auth_service.refresh_token(db, refresh_data.refresh_token)
+    refresh_token_value = resolve_refresh_token(refresh_data, refresh_token_cookie)
+    tokens = auth_service.refresh_token(db, refresh_token_value)
+    set_refresh_token_cookie(response, tokens.refresh_token)
+    return tokens
 
 
 @router.get(
@@ -176,12 +228,21 @@ async def get_me(
     description="Revoke the refresh token.",
 )
 async def logout(
-    refresh_data: RefreshRequest,
     db: DbSession,
+    response: Response,
+    refresh_data: RefreshRequest | None = Body(default=None),
+    refresh_token_cookie: str | None = Cookie(
+        default=None, alias=settings.refresh_token_cookie_name
+    ),
     current_user: User = Depends(get_current_user),
 ) -> None:
     """Logout user."""
-    auth_service.logout(db, refresh_data.refresh_token)
+    try:
+        refresh_token_value = resolve_refresh_token(refresh_data, refresh_token_cookie)
+        auth_service.logout(db, refresh_token_value)
+    finally:
+        clear_refresh_token_cookie(response)
+
     access_log_service.log_access(
         db=db,
         action="logout",
@@ -237,7 +298,7 @@ async def mfa_verify(
 
 @router.post(
     "/mfa/validate",
-    response_model=Token,
+    response_model=AccessToken,
     summary="Validate MFA login",
     description="Complete the login process by providing the MFA code and temp token.",
 )
@@ -251,6 +312,8 @@ async def mfa_validate(
         tokens, user = auth_service.validate_mfa_login(
             db, validate_data.temp_token, validate_data.code
         )
+
+        set_refresh_token_cookie(response, tokens.refresh_token)
 
         if validate_data.trust_device:
             raw_token, trusted_device = auth_service.create_trusted_device(
