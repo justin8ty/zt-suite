@@ -1,7 +1,8 @@
 """Agent configuration settings."""
 
-from typing import Literal
+from typing import Any, Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -106,6 +107,21 @@ class Settings(BaseSettings):
 
     api_timeout: float = 10.0
     """Backend API request timeout in seconds."""
+
+    @field_validator(
+        "interface",
+        "target_ip",
+        "agent_id",
+        "access_token",
+        "device_id",
+        mode="before",
+    )
+    @classmethod
+    def empty_string_to_none(cls, value: Any) -> Any:
+        """Treat blank .env optional values as unset."""
+        if value == "":
+            return None
+        return value
 
 
 # Global settings instance - loaded once at module import

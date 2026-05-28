@@ -337,3 +337,6 @@ If useful, trained artifacts or feature-engineering ideas from `/ids` can be ada
 - Use least privilege where possible, even if packet capture requires elevated permissions.
 - Prefer structured logs with request/trace identifiers.
 - Use local buffering to avoid data loss during backend downtime.
+
+email: admin@example.com
+password: admin123
