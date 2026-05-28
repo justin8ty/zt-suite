@@ -2,17 +2,6 @@
 
 ## 1. Background & Context
 
-### 1.1 Market Analysis
-
-* **Insider threat prevalence:** Internal actors contribute to ~35% of security breaches.
-* **Credential abuse:** >60% of breaches involve stolen, weak, or misused credentials; credential abuse remains the top initial access vector (~22%).
-* **Operational visibility gap:** ~73% of internal security incidents stem from employee misconfiguration or misuse that goes undetected.
-
-**Pain Points:**
-
-* Overreliance on perimeter-based security models
-* Lack of continuous identity and device verification
-
 ### 1.2 Product Objectives & KPIs
 
 **Primary Objectives:**
@@ -29,19 +18,6 @@
 * ≥80% precision in detecting injected anomalous traffic patterns
 * Target <2s dashboard data refresh latency; current frontend prototype uses 10s polling for most dashboard/security pages
 * 100% access events logged and auditable
-
-### 1.3 User Personas
-
-**Persona 1: IT Administrator**
-
-* Role: IT Admin / Security Engineer
-* Environment: <500 endpoints, limited security budget
-* Needs: Visibility, control, low operational overhead
-
-**Persona 2: Internal Employee (End User)**
-
-* Role: General staff, developers, operations
-* Needs: Minimal friction authentication, clear access boundaries
 
 ---
 
@@ -98,6 +74,7 @@
   * Port scanning behavior
 * Configurable detection thresholds
 * Alert generation with severity levels
+* Detection outputs include reason codes (e.g., spike, deviation score) for administrator trust and decision-making
 
 #### 5. Administrative Dashboard
 
@@ -110,33 +87,7 @@
 
 ---
 
-### 2.2 Innovative / Differentiating Features
-
-1. **Software-Only Zero-Trust Architecture**
-
-   * No hardware dependencies (TPM, secure boot excluded)
-   * Fully deployable in virtualized SME environments
-
-2. **Integrated Internal Visibility**
-
-   * Identity + device posture + traffic behavior in one platform
-   * Single-pane-of-glass security monitoring
-
-3. **Explainable Anomaly Detection**
-
-   * Detection outputs include reason codes (e.g., spike, deviation score)
-   * Improves administrator trust and decision-making
-
----
-
 ## 3. User Flows
-
-### 3.1 New User Onboarding
-
-1. Admin creates user account and assigns role
-2. User sets password
-3. MFA enrollment (TOTP QR code)
-4. First successful authenticated session
 
 ### 3.2 Primary Access Flow
 
@@ -163,37 +114,6 @@
 
 ---
 
-## 4. Business Flow
-
-```mermaid
-flowchart LR
-    User -->|Login| IAM
-    IAM --> MFA{MFA Enabled?}
-    MFA -->|Challenge Required| MFAValidate[MFA Validation]
-    MFA -->|No Challenge| Session[JWT Session]
-    MFAValidate --> Session
-    Session --> DeviceHeader[X-Device-ID]
-    DeviceHeader --> Posture[Endpoint Posture Check]
-    Posture -->|Compliant| RBAC[RBAC Authorization]
-    Posture -->|Non-compliant| Deny
-    RBAC -->|Allowed| Access
-    RBAC -->|Denied| Deny
-    Access --> Traffic[Network Traffic]
-    Traffic --> Detection[Agent Anomaly Detection]
-    Detection --> Alerts[Alerts]
-    Alerts --> Dashboard
-    IAM --> Logs
-    Logs --> Dashboard
-```
-
-**Integration Points:**
-
-* IAM ↔ Dashboard
-* Posture Module ↔ IAM
-* Traffic Monitor ↔ Anomaly Engine
-
----
-
 ## 5. Development Plan
 
 ### Phase Breakdown
@@ -205,27 +125,17 @@ flowchart LR
 | P2 – Optimization | Anomaly detection, tuning        |
 | P3 – Innovation   | Explainability, UI refinement    |
 
-**Prioritization Rationale:**
-
-* Identity enforcement is foundational (P0)
-* Posture validation strengthens Zero-Trust guarantees (P1)
-* Behavioral detection adds advanced security value (P2)
-* UX and explainability improve usability (P3)
-
 ---
 
 ## 6. Technical Requirements
 
 ### 6.1 Architecture Overview
 
-* Modular, service-oriented design
 * Central backend with REST APIs (storage and dashboard serving)
-* Web-based frontend dashboard
 * Edge-based processing: Agents perform feature engineering and ML inference locally
 * Target: pre-trained ML model shipped with agent (no runtime training)
 * Current: agent loads a local joblib model when present and falls back to heuristic detection when absent
 * Agent reporting endpoints currently include `POST /api/devices`, `POST /api/devices/{device_id}/posture`, `POST /api/traffic`, and `POST /api/alerts`
-* Simulated endpoints and network
 
 ### 6.2 Technology Stack
 
@@ -276,15 +186,3 @@ The current implementation intentionally differs from the target PRD in several 
 * Missing model artifact falls back to heuristics → ship and validate the target model artifact before final evaluation
 * Pre-trained/public-dataset model → may not cover all attack patterns
 * No cross-device correlation → agent-based detection is per-endpoint only
-
----
-
-## 7. Success Metrics
-
-* Authentication success/failure rate
-* MFA adoption rate
-* Endpoint compliance percentage
-* True/false positive anomaly rates
-* Dashboard usage frequency
-
----
