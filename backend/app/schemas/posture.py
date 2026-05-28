@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class PostureReportBase(BaseModel):
@@ -12,13 +12,13 @@ class PostureReportBase(BaseModel):
     antivirus_enabled: bool
     firewall_enabled: bool
     disk_encrypted: bool
-    os_up_to_date: bool
+    os_up_to_date: bool | None = None
 
 
 class PostureReportCreate(PostureReportBase):
     """Schema for submitting a posture report."""
 
-    pass
+    check_details: dict[str, str] | None = None
 
 
 class PostureReportRead(PostureReportBase):
@@ -31,3 +31,4 @@ class PostureReportRead(PostureReportBase):
     compliance_score: int
     is_compliant: bool
     timestamp: datetime
+    check_details: str | None = None

@@ -1,6 +1,7 @@
 """Posture evaluation service."""
 
 from datetime import datetime, timezone
+import json
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -21,19 +22,21 @@ class PostureService:
         Returns:
             Tuple of (is_compliant, score).
         """
-        score = 0
+        raw_score = 0
+        possible_score = 90 if report_in.os_up_to_date is None else 100
 
-        # Simple scoring rules
+        # Simple scoring rules. Unknown patch status is excluded from the denominator
+        # instead of being treated as a failed check.
         if report_in.antivirus_present and report_in.antivirus_enabled:
-            score += 40
+            raw_score += 40
         if report_in.firewall_enabled:
-            score += 30
+            raw_score += 30
         if report_in.disk_encrypted:
-            score += 20
-        if report_in.os_up_to_date:
-            score += 10
+            raw_score += 20
+        if report_in.os_up_to_date is True:
+            raw_score += 10
 
-        # Threshold
+        score = round((raw_score / possible_score) * 100)
         is_compliant = score >= 70
         return is_compliant, score
 
@@ -51,6 +54,9 @@ class PostureService:
             firewall_enabled=report_in.firewall_enabled,
             disk_encrypted=report_in.disk_encrypted,
             os_up_to_date=report_in.os_up_to_date,
+            check_details=(
+                json.dumps(report_in.check_details) if report_in.check_details else None
+            ),
             compliance_score=score,
             is_compliant=is_compliant,
             timestamp=datetime.now(timezone.utc),

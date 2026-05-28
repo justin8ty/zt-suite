@@ -33,12 +33,18 @@ class ApiClient:
         if device_id is None:
             return
 
+        os_up_to_date = (
+            None
+            if report.security.updates_available is None
+            else not report.security.updates_available
+        )
         payload = {
             "antivirus_present": bool(report.security.antivirus_present),
             "antivirus_enabled": bool(report.security.antivirus_present),
             "firewall_enabled": bool(report.security.firewall_enabled),
             "disk_encrypted": bool(report.security.disk_encryption_enabled),
-            "os_up_to_date": False if report.security.updates_available is None else not report.security.updates_available,
+            "os_up_to_date": os_up_to_date,
+            "check_details": report.security.check_details,
         }
         self._post(f"/api/devices/{device_id}/posture", payload, "posture report")
 

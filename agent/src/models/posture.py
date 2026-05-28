@@ -26,6 +26,7 @@ class SecurityStatus(BaseModel):
     antivirus_present: bool | None = None
     disk_encryption_enabled: bool | None = None
     updates_available: bool | None = None
+    check_details: dict[str, str] = Field(default_factory=dict)
 
 
 class PostureReport(BaseModel):

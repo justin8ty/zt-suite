@@ -75,35 +75,53 @@ class PostureCollector:
     def _collect_security_status(self) -> SecurityStatus:
         os_name = platform.system().lower()
 
+        checks: list[tuple[str, CallableCheck]]
         if os_name == "windows":
-            return SecurityStatus(
-                firewall_enabled=self._safe_check("windows_firewall", _windows_firewall_enabled),
-                antivirus_present=self._safe_check("windows_antivirus", _windows_antivirus_present),
-                disk_encryption_enabled=self._safe_check(
-                    "windows_disk_encryption", _windows_disk_encryption_enabled
-                ),
-                updates_available=None,
-            )
+            checks = [
+                ("firewall_enabled", _windows_firewall_enabled),
+                ("antivirus_present", _windows_antivirus_present),
+                ("disk_encryption_enabled", _windows_disk_encryption_enabled),
+                ("updates_available", _windows_updates_available),
+            ]
+        elif os_name == "linux":
+            checks = [
+                ("firewall_enabled", _linux_firewall_enabled),
+                ("antivirus_present", _linux_antivirus_present),
+                ("disk_encryption_enabled", _linux_disk_encryption_enabled),
+                ("updates_available", _ubuntu_updates_available),
+            ]
+        else:
+            return SecurityStatus(check_details={"platform": f"unsupported os={os_name}"})
 
-        if os_name == "linux":
-            return SecurityStatus(
-                firewall_enabled=self._safe_check("linux_firewall", _linux_firewall_enabled),
-                antivirus_present=self._safe_check("linux_antivirus", _linux_antivirus_present),
-                disk_encryption_enabled=self._safe_check(
-                    "linux_disk_encryption", _linux_disk_encryption_enabled
-                ),
-                updates_available=None,
-            )
+        values: dict[str, bool | None] = {}
+        details: dict[str, str] = {}
+        for field_name, check in checks:
+            value, detail = self._safe_check(field_name, check)
+            values[field_name] = value
+            details[field_name] = detail
 
-        return SecurityStatus()
+        return SecurityStatus(
+            firewall_enabled=values["firewall_enabled"],
+            antivirus_present=values["antivirus_present"],
+            disk_encryption_enabled=values["disk_encryption_enabled"],
+            updates_available=values["updates_available"],
+            check_details=details,
+        )
 
-    def _safe_check(self, check_name: str, check: CallableCheck) -> bool | None:
+    def _safe_check(
+        self, check_name: str, check: CallableCheck
+    ) -> tuple[bool | None, str]:
         try:
-            return check()
+            value = check()
+            detail = "unknown" if value is None else f"detected={value}"
+            if self._logger:
+                self._logger.info("Posture check result: %s %s", check_name, detail)
+            return value, detail
         except Exception as exc:  # noqa: BLE001 - posture checks are best-effort.
+            detail = f"unavailable: {exc}"
             if self._logger:
                 self._logger.warning("Posture check unavailable: %s (%s)", check_name, exc)
-            return None
+            return None, detail
 
 
 CallableCheck = Callable[[], bool | None]
@@ -169,6 +187,27 @@ def _windows_disk_encryption_enabled() -> bool | None:
     return "protection on" in output
 
 
+def _windows_updates_available() -> bool | None:
+    result = _run_powershell(
+        "$session = New-Object -ComObject Microsoft.Update.Session; "
+        "$searcher = $session.CreateUpdateSearcher(); "
+        "$result = $searcher.Search(\"IsInstalled=0 and Type='Software'\"); "
+        "$result.Updates.Count",
+        timeout=20,
+    )
+    if result.returncode != 0:
+        return None
+
+    output = result.stdout.strip().splitlines()
+    if not output:
+        return None
+
+    try:
+        return int(output[-1].strip()) > 0
+    except ValueError:
+        return None
+
+
 def _linux_firewall_enabled() -> bool | None:
     ufw = shutil.which("ufw")
     if ufw is not None:
@@ -213,3 +252,32 @@ def _linux_disk_encryption_enabled() -> bool | None:
         return None
     types = {line.strip().lower() for line in result.stdout.splitlines() if line.strip()}
     return "crypt" in types
+
+
+def _ubuntu_updates_available() -> bool | None:
+    apt = shutil.which("apt")
+    if apt is not None:
+        result = _run_command([apt, "list", "--upgradable"], timeout=20)
+        if result.returncode == 0:
+            package_lines = [
+                line
+                for line in result.stdout.splitlines()
+                if line.strip() and not line.startswith("Listing...")
+            ]
+            return bool(package_lines)
+
+    apt_get = shutil.which("apt-get")
+    if apt_get is not None:
+        result = _run_command([apt_get, "-s", "upgrade"], timeout=20)
+        if result.returncode == 0:
+            output = result.stdout.lower()
+            marker = "upgraded,"
+            if marker in output:
+                first_line = output.splitlines()[0] if output.splitlines() else ""
+                count_text = first_line.split(marker, maxsplit=1)[0].strip()
+                try:
+                    return int(count_text.split()[-1]) > 0
+                except (IndexError, ValueError):
+                    return None
+
+    return None

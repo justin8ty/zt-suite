@@ -1,11 +1,15 @@
 """Posture Report ORM model."""
 
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.device import Device
 
 
 class PostureReport(Base):
@@ -18,7 +22,8 @@ class PostureReport(Base):
         antivirus_enabled: Is AV active?
         firewall_enabled: Is firewall active?
         disk_encrypted: Is disk encrypted?
-        os_up_to_date: Is OS patched?
+        os_up_to_date: Is OS patched? Nullable when the agent cannot determine status.
+        check_details: Best-effort source/reason details for collected checks.
         compliance_score: Calculated score (0-100).
         is_compliant: Result of evaluation.
         timestamp: Collection time.
@@ -34,7 +39,8 @@ class PostureReport(Base):
     antivirus_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     firewall_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     disk_encrypted: Mapped[bool] = mapped_column(Boolean, default=False)
-    os_up_to_date: Mapped[bool] = mapped_column(Boolean, default=False)
+    os_up_to_date: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    check_details: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Result
     compliance_score: Mapped[int] = mapped_column(Integer, default=0)
