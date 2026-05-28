@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ErrorState } from '@/components/common/error-state'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { useRole } from '@/hooks/use-role'
+import { formatBytes } from '@/lib/format'
 import { getApiErrorMessage } from '@/services/api-client'
 import { alertService } from '@/services/alert-service'
 import { deviceService } from '@/services/device-service'
@@ -15,6 +16,174 @@ const DASHBOARD_REFETCH_MS = 10_000
 const panelClassName =
   'rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl'
 const detailRowClassName = 'flex justify-between gap-4 border-b border-slate-400/15 pb-3 max-md:flex-col'
+const chartCardClassName =
+  'rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl'
+
+type SeverityKey = 'critical' | 'high' | 'medium' | 'low' | 'other'
+
+const severityConfig: Record<SeverityKey, { label: string; className: string }> = {
+  critical: { label: 'Critical', className: 'bg-red-400' },
+  high: { label: 'High', className: 'bg-orange-300' },
+  medium: { label: 'Medium', className: 'bg-yellow-300' },
+  low: { label: 'Low', className: 'bg-sky-300' },
+  other: { label: 'Other', className: 'bg-slate-400' },
+}
+
+function normalizeSeverity(severity: string): SeverityKey {
+  const normalized = severity.toLowerCase()
+  if (normalized === 'critical' || normalized === 'high' || normalized === 'medium' || normalized === 'low') {
+    return normalized
+  }
+  return 'other'
+}
+
+function AlertSeverityChart({ alerts }: { alerts: Array<{ severity: string }> }) {
+  const counts = alerts.reduce<Record<SeverityKey, number>>(
+    (current, alert) => {
+      current[normalizeSeverity(alert.severity)] += 1
+      return current
+    },
+    { critical: 0, high: 0, medium: 0, low: 0, other: 0 },
+  )
+  const maxCount = Math.max(...Object.values(counts), 1)
+
+  return (
+    <article className={chartCardClassName}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-slate-50">Alert severity distribution</h2>
+          <p className="mt-1 text-sm text-slate-400">Open alerts grouped by severity.</p>
+        </div>
+        <span className="rounded-full border border-slate-400/20 px-3 py-1 text-sm font-bold text-slate-300">
+          {alerts.length} total
+        </span>
+      </div>
+      <div className="mt-5 grid gap-3">
+        {(Object.keys(severityConfig) as SeverityKey[]).map((severity) => {
+          const count = counts[severity]
+          const width = `${Math.max((count / maxCount) * 100, count > 0 ? 8 : 0)}%`
+
+          return (
+            <div className="grid grid-cols-[80px_1fr_32px] items-center gap-3" key={severity}>
+              <span className="text-sm text-slate-300">{severityConfig[severity].label}</span>
+              <div className="h-3 overflow-hidden rounded-full bg-slate-950/80">
+                <div className={`h-full rounded-full ${severityConfig[severity].className}`} style={{ width }} />
+              </div>
+              <span className="text-right text-sm font-bold text-slate-50">{count}</span>
+            </div>
+          )
+        })}
+      </div>
+    </article>
+  )
+}
+
+function TrafficVolumeChart({
+  records,
+}: {
+  records: Array<{ bytes_received: number; bytes_sent: number; timestamp: string }>
+}) {
+  const bucketMap = records.reduce<Map<string, number>>((current, record) => {
+    const date = new Date(record.timestamp)
+    if (Number.isNaN(date.getTime())) return current
+
+    date.setSeconds(0, 0)
+    const key = date.toISOString()
+    current.set(key, (current.get(key) ?? 0) + record.bytes_sent + record.bytes_received)
+    return current
+  }, new Map())
+
+  const buckets = Array.from(bucketMap.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .slice(-8)
+    .map(([key, bytes]) => ({
+      bytes,
+      label: new Date(key).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }))
+  const maxBytes = Math.max(...buckets.map((bucket) => bucket.bytes), 1)
+
+  return (
+    <article className={chartCardClassName}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-slate-50">Traffic volume over time</h2>
+          <p className="mt-1 text-sm text-slate-400">Recent uploaded metadata grouped by minute.</p>
+        </div>
+        <span className="rounded-full border border-slate-400/20 px-3 py-1 text-sm font-bold text-slate-300">
+          {formatBytes(buckets.reduce((total, bucket) => total + bucket.bytes, 0))}
+        </span>
+      </div>
+      {buckets.length === 0 ? (
+        <p className="mt-6 text-sm text-slate-400">No traffic records available yet.</p>
+      ) : (
+        <div className="mt-6 flex h-44 items-end gap-2 border-b border-slate-400/15 pb-3">
+          {buckets.map((bucket) => {
+            const height = `${Math.max((bucket.bytes / maxBytes) * 100, 6)}%`
+
+            return (
+              <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={bucket.label}>
+                <div className="flex h-32 w-full items-end rounded-t-2xl bg-slate-950/50 p-1">
+                  <div
+                    aria-label={`${bucket.label}: ${formatBytes(bucket.bytes)}`}
+                    className="w-full rounded-t-xl bg-gradient-to-t from-cyan-500 to-green-300"
+                    style={{ height }}
+                    title={`${bucket.label}: ${formatBytes(bucket.bytes)}`}
+                  />
+                </div>
+                <span className="max-w-full truncate text-xs text-slate-400">{bucket.label}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </article>
+  )
+}
+
+function ComplianceBreakdownChart({ devices }: { devices: Array<{ is_compliant: boolean }> }) {
+  const compliant = devices.filter((device) => device.is_compliant).length
+  const nonCompliant = devices.length - compliant
+  const compliantPercentage = devices.length === 0 ? 0 : Math.round((compliant / devices.length) * 100)
+
+  return (
+    <article className={chartCardClassName}>
+      <h2 className="text-lg font-bold text-slate-50">Device compliance breakdown</h2>
+      <p className="mt-1 text-sm text-slate-400">Current endpoint posture status.</p>
+      <div className="mt-6 flex items-center gap-6 max-sm:flex-col">
+        <div
+          aria-label={`${compliantPercentage}% compliant devices`}
+          className="grid size-36 shrink-0 place-items-center rounded-full"
+          style={{
+            background: `conic-gradient(rgb(74 222 128) 0 ${compliantPercentage}%, rgb(248 113 113) ${compliantPercentage}% 100%)`,
+          }}
+        >
+          <div className="grid size-24 place-items-center rounded-full bg-slate-900 text-center shadow-inner shadow-black/40">
+            <strong className="text-2xl text-slate-50">{compliantPercentage}%</strong>
+            <span className="text-xs text-slate-400">compliant</span>
+          </div>
+        </div>
+        <div className="grid flex-1 gap-3 text-sm">
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-950/50 px-4 py-3">
+            <span className="flex items-center gap-2 text-slate-300">
+              <span className="size-2.5 rounded-full bg-green-400" /> Compliant
+            </span>
+            <strong className="text-slate-50">{compliant}</strong>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-950/50 px-4 py-3">
+            <span className="flex items-center gap-2 text-slate-300">
+              <span className="size-2.5 rounded-full bg-red-400" /> Non-compliant
+            </span>
+            <strong className="text-slate-50">{nonCompliant}</strong>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-950/50 px-4 py-3">
+            <span className="text-slate-300">Registered devices</span>
+            <strong className="text-slate-50">{devices.length}</strong>
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
 
 export function DashboardPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
@@ -107,6 +276,14 @@ export function DashboardPage() {
           value={isAdmin ? accessFailures : 'Restricted'}
         />
       </section>
+
+      {canViewSecurityData && (
+        <section className="grid grid-cols-3 gap-5 max-2xl:grid-cols-2 max-lg:grid-cols-1" aria-label="Security visualizations">
+          <AlertSeverityChart alerts={alerts} />
+          <TrafficVolumeChart records={traffic} />
+          <ComplianceBreakdownChart devices={devices} />
+        </section>
+      )}
 
       <section className="grid grid-cols-2 gap-5 max-lg:grid-cols-1">
         <article className={panelClassName}>
