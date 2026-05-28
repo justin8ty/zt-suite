@@ -169,7 +169,7 @@
 The current implementation intentionally differs from the target PRD in several areas. These gaps should be resolved later so the implementation and PRD align perfectly.
 
 * **Device trust token flow:** Implemented for browser-based login. Users can choose "Trust this device for 30 days" during MFA validation; subsequent password logins can bypass MFA when the trusted-device cookie is valid. Protected-resource access still separately checks device compliance using an `X-Device-ID` header.
-* **Agent authentication:** Current agent backend reporting uses a user JWT access token. A dedicated agent identity/token model is still needed for production-like deployment.
+* **Agent authentication:** Implemented for telemetry reporting. Devices can be issued dedicated agent tokens, stored server-side only as hashes, and the agent uses `ZT_AGENT_TOKEN` plus `ZT_AGENT_DEVICE_ID` for posture, traffic, and alert reporting. Human JWTs still register/manage devices and issue/revoke agent tokens.
 * **Posture reporting endpoint:** Current posture submission is nested under devices: `POST /api/devices/{device_id}/posture`, not a standalone `POST /api/posture` endpoint.
 * **Posture fidelity:** Firewall, antivirus, and disk encryption are implemented as best-effort checks. Patch/update status is currently incomplete and may be reported conservatively.
 * **Anomaly model:** The PRD target remains a shipped pre-trained Isolation Forest model. Current agent code supports local joblib inference but uses heuristic fallback if the model artifact is missing.

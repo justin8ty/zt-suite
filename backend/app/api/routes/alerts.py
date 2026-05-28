@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import DbSession, get_current_user
+from app.api.deps import CurrentAgentToken, DbSession, get_current_user
 from app.core.permissions import RoleName, require_roles
 from app.models.user import User
 from app.schemas.alert import AlertCreate, AlertRead, AlertUpdate
@@ -22,15 +22,17 @@ router = APIRouter()
 async def create_alert(
     alert_in: AlertCreate,
     db: DbSession,
-    current_user: User = Depends(get_current_user),
+    agent_token: CurrentAgentToken,
 ) -> AlertRead:
     """Create alert."""
+    if agent_token.device_id != alert_in.device_id:
+        raise HTTPException(
+            status_code=403, detail="Agent token is not authorized for this device"
+        )
+
     device = device_service.get_by_id(db, alert_in.device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-
-    if device.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
 
     alert = alert_service.create_alert(db, alert_in)
     return AlertRead.model_validate(alert)

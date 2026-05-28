@@ -99,11 +99,11 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8000"
     """Base URL for the backend API."""
 
-    access_token: str | None = None
-    """User JWT access token for backend API calls."""
+    agent_token: str | None = None
+    """Device-scoped agent token for backend API calls."""
 
     device_id: int | None = None
-    """Backend device ID. If unset, the agent attempts to register the device."""
+    """Backend device ID this agent token is scoped to."""
 
     api_timeout: float = 10.0
     """Backend API request timeout in seconds."""
@@ -112,7 +112,7 @@ class Settings(BaseSettings):
         "interface",
         "target_ip",
         "agent_id",
-        "access_token",
+        "agent_token",
         "device_id",
         mode="before",
     )

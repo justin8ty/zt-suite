@@ -138,6 +138,15 @@ def get_totp_uri(account_name: str, secret: str) -> str:
     )
 
 
+def _hash_secret_token(token: str, purpose: str) -> str:
+    """Create a deterministic keyed hash for secret token lookup."""
+    return hmac.new(
+        settings.secret_key.encode("utf-8"),
+        f"{purpose}:{token}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
 def generate_trusted_device_token() -> str:
     """Generate a random trusted-device token."""
     return secrets.token_urlsafe(32)
@@ -150,6 +159,16 @@ def hash_trusted_device_token(token: str) -> str:
         token.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
+
+
+def generate_agent_token() -> str:
+    """Generate a random agent API token."""
+    return f"ztag_{secrets.token_urlsafe(32)}"
+
+
+def hash_agent_token(token: str) -> str:
+    """Create a deterministic keyed hash for agent token lookup."""
+    return _hash_secret_token(token, "agent")
 
 
 def create_mfa_temp_token(subject: str | Any) -> str:

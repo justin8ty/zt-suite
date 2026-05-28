@@ -1,16 +1,26 @@
 """Device and Posture API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import DbSession, get_current_user
+from app.api.deps import CurrentAgentToken, DbSession, get_current_user
 from app.core.permissions import RoleName, require_roles
+from app.models.device import Device
 from app.models.user import User
+from app.schemas.agent_token import AgentTokenCreate, AgentTokenIssued, AgentTokenRead
 from app.schemas.device import DeviceCreate, DeviceList, DeviceRead
 from app.schemas.posture import PostureReportCreate, PostureReportRead
+from app.services.agent_token import agent_token_service
 from app.services.device import device_service
 from app.services.posture import posture_service
 
 router = APIRouter()
+
+
+def ensure_user_can_manage_device(device: Device, user: User) -> None:
+    """Raise if a user cannot manage a device."""
+    is_admin = any(r.name == RoleName.ADMIN for r in user.roles)
+    if device.user_id != user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized for this device")
 
 
 @router.post(
@@ -75,6 +85,61 @@ async def get_device(
 
 
 @router.post(
+    "/{device_id}/agent-tokens",
+    response_model=AgentTokenIssued,
+    summary="Issue an agent token",
+    description="Create a device-scoped token for endpoint agent telemetry reporting.",
+)
+async def issue_agent_token(
+    device_id: int,
+    token_in: AgentTokenCreate,
+    db: DbSession,
+    current_user: User = Depends(get_current_user),
+) -> AgentTokenIssued:
+    """Issue a raw agent token once for a registered device."""
+    device = device_service.get_by_id(db, device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    ensure_user_can_manage_device(device, current_user)
+    raw_token, token = agent_token_service.create_token(db, device, token_in.name)
+    return AgentTokenIssued(
+        id=token.id,
+        device_id=token.device_id,
+        name=token.name,
+        created_at=token.created_at,
+        last_used_at=token.last_used_at,
+        revoked_at=token.revoked_at,
+        token=raw_token,
+    )
+
+
+@router.delete(
+    "/{device_id}/agent-tokens/{token_id}",
+    response_model=AgentTokenRead,
+    summary="Revoke an agent token",
+    description="Revoke a device-scoped agent token.",
+)
+async def revoke_agent_token(
+    device_id: int,
+    token_id: int,
+    db: DbSession,
+    current_user: User = Depends(get_current_user),
+) -> AgentTokenRead:
+    """Revoke an agent token for a registered device."""
+    device = device_service.get_by_id(db, device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    ensure_user_can_manage_device(device, current_user)
+    token = agent_token_service.revoke_token(db, device_id, token_id)
+    if not token:
+        raise HTTPException(status_code=404, detail="Agent token not found")
+
+    return AgentTokenRead.model_validate(token)
+
+
+@router.post(
     "/{device_id}/posture",
     response_model=PostureReportRead,
     summary="Submit posture report",
@@ -84,20 +149,17 @@ async def submit_posture(
     device_id: int,
     report_in: PostureReportCreate,
     db: DbSession,
-    current_user: User = Depends(get_current_user),
+    agent_token: CurrentAgentToken,
 ) -> PostureReportRead:
     """Submit posture report."""
+    if agent_token.device_id != device_id:
+        raise HTTPException(
+            status_code=403, detail="Agent token is not authorized for this device"
+        )
+
     device = device_service.get_by_id(db, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-
-    # Check ownership (strict for reporting)
-    if device.user_id != current_user.id:
-        # In a real agent scenario, the agent might authenticate as itself or the user.
-        # For this prototype, we assume the user's token is used by the agent.
-        raise HTTPException(
-            status_code=403, detail="Not authorized to report for this device"
-        )
 
     report = posture_service.submit_report(db, device, report_in)
     return PostureReportRead.model_validate(report)

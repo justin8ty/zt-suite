@@ -2,9 +2,8 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import DbSession, get_current_user
+from app.api.deps import CurrentAgentToken, DbSession
 from app.core.permissions import RoleName, require_roles
-from app.models.user import User
 from app.schemas.traffic import TrafficBatchCreate, TrafficRecordRead
 from app.services.device import device_service
 from app.services.traffic import traffic_service
@@ -21,18 +20,17 @@ router = APIRouter()
 async def ingest_traffic(
     batch: TrafficBatchCreate,
     db: DbSession,
-    current_user: User = Depends(get_current_user),
+    agent_token: CurrentAgentToken,
 ) -> dict[str, int]:
     """Ingest traffic records."""
-    # Verify device exists and belongs to user
+    if agent_token.device_id != batch.device_id:
+        raise HTTPException(
+            status_code=403, detail="Agent token is not authorized for this device"
+        )
+
     device = device_service.get_by_id(db, batch.device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-
-    if device.user_id != current_user.id:
-        # In production, agent authentication would be separate.
-        # For now, agent uses user's token.
-        raise HTTPException(status_code=403, detail="Not authorized for this device")
 
     count = traffic_service.ingest_batch(db, batch)
     return {"inserted": count}

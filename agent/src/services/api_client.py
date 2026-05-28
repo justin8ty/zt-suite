@@ -25,7 +25,7 @@ class ApiClient:
         return settings.reporting_enabled
 
     def report_posture(self, report: PostureReport) -> None:
-        """Register device if needed, then submit posture report."""
+        """Submit posture report for the configured backend device."""
         if not self._ready():
             return
 
@@ -82,36 +82,23 @@ class ApiClient:
         if self._device_id is not None:
             return self._device_id
 
-        payload = {
-            "hostname": report.hostname,
-            "os_type": report.os_name,
-            "os_version": report.os_version,
-            "agent_version": report.agent_version,
-        }
-        data = self._post("/api/devices", payload, "device registration")
-        if not isinstance(data, dict):
-            return None
-
-        device_id = data.get("id")
-        if isinstance(device_id, int):
-            self._device_id = device_id
-            self._info("Registered backend device_id=%s", device_id)
-            return device_id
-
-        self._warn("Device registration response did not include id")
+        self._warn(
+            "Skipping posture report for hostname=%s; ZT_AGENT_DEVICE_ID is required with agent-token authentication",
+            report.hostname,
+        )
         return None
 
     def _ready(self) -> bool:
         if not settings.reporting_enabled:
             return False
-        if not settings.access_token:
-            self._warn("Backend reporting enabled but ZT_AGENT_ACCESS_TOKEN is missing")
+        if not settings.agent_token:
+            self._warn("Backend reporting enabled but ZT_AGENT_TOKEN is missing")
             return False
         return True
 
     def _post(self, path: str, payload: dict[str, object], label: str) -> object | None:
         url = f"{self._base_url}{path}"
-        headers = {"Authorization": f"Bearer {settings.access_token}"}
+        headers = {"Authorization": f"Bearer {settings.agent_token}"}
         try:
             with httpx.Client(timeout=settings.api_timeout) as client:
                 response = client.post(url, json=payload, headers=headers)

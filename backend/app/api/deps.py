@@ -4,21 +4,24 @@ from collections.abc import Generator
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
+from jose import JWTError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.exceptions import TokenInvalidError, InactiveUserError
 from app.core.security import decode_token
 from app.db.session import SessionLocal
+from app.models.agent_token import AgentToken
 from app.models.device import Device
 from app.models.user import User
+from app.services.agent_token import agent_token_service
 from app.schemas.auth import TokenPayload
 
 settings = get_settings()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+agent_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -80,6 +83,24 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_current_agent_token(
+    db: DbSession,
+    credentials: HTTPAuthorizationCredentials | None = Depends(agent_bearer_scheme),
+) -> AgentToken:
+    """Dependency to validate a device-scoped agent bearer token."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise TokenInvalidError()
+
+    token = agent_token_service.get_valid_token(db, credentials.credentials)
+    if not token:
+        raise TokenInvalidError()
+
+    return token
+
+
+CurrentAgentToken = Annotated[AgentToken, Depends(get_current_agent_token)]
 
 
 async def require_mfa(
