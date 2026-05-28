@@ -10,6 +10,7 @@ import { formatDateTime } from '@/lib/format'
 import { routes } from '@/lib/routes'
 import { getApiErrorMessage } from '@/services/api-client'
 import { deviceService } from '@/services/device-service'
+import type { AgentTokenIssued } from '@/types/device'
 import type { PostureReportCreate } from '@/types/posture'
 
 const checkboxClassName = 'size-4 accent-sky-400'
@@ -20,6 +21,9 @@ export function DeviceDetailPage() {
   const queryClient = useQueryClient()
   const params = useParams()
   const deviceId = Number(params.deviceId)
+  const [tokenName, setTokenName] = useState('default agent')
+  const [issuedToken, setIssuedToken] = useState<AgentTokenIssued | null>(null)
+  const [copied, setCopied] = useState(false)
   const [posture, setPosture] = useState<PostureReportCreate>({
     antivirus_present: true,
     antivirus_enabled: true,
@@ -39,6 +43,14 @@ export function DeviceDetailPage() {
     queryFn: () => deviceService.getLatestPosture(deviceId),
     enabled: Number.isFinite(deviceId),
     retry: false,
+  })
+
+  const issueTokenMutation = useMutation({
+    mutationFn: () => deviceService.issueAgentToken(deviceId, { name: tokenName || 'default agent' }),
+    onSuccess: (data) => {
+      setIssuedToken(data)
+      setTokenName('default agent')
+    },
   })
 
   const submitPostureMutation = useMutation({
@@ -96,6 +108,54 @@ export function DeviceDetailPage() {
           </article>
         </section>
       )}
+
+      <section className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-50">
+          <svg className="size-5 text-amber-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Agent tokens
+        </h2>
+        <div className="mt-5 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <label className="mb-1 block text-xs text-slate-400" htmlFor="token-name">Token name</label>
+            <input
+              className="w-full rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15"
+              id="token-name"
+              onChange={(event) => setTokenName(event.target.value)}
+              placeholder="e.g. workstation-alpha"
+              value={tokenName}
+            />
+          </div>
+          <button
+            className={`${buttonClassName} flex items-center gap-2`}
+            disabled={issueTokenMutation.isPending}
+            onClick={() => issueTokenMutation.mutate()}
+            type="button"
+          >
+            {issueTokenMutation.isPending ? 'Issuing...' : 'Issue token'}
+          </button>
+        </div>
+
+        {issueTokenMutation.isError && (
+          <div className="mt-4"><ErrorState message={getApiErrorMessage(issueTokenMutation.error)} /></div>
+        )}
+
+        {issuedToken && (
+          <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-950/30 p-4">
+            <p className="mb-2 text-sm font-bold text-amber-300">Token issued — copy it now, it won&apos;t be shown again</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 overflow-x-auto rounded-xl bg-slate-950/80 px-3 py-2 text-sm text-slate-50">{issuedToken.token}</code>
+              <button
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-50"
+                onClick={() => { navigator.clipboard.writeText(issuedToken.token); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+                title="Copy token"
+                type="button"
+              >
+                <svg className="size-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect height="13" rx="2" ry="2" width="13" x="9" y="9"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              </button>
+            </div>
+            {copied && <p className="mt-1 text-xs text-green-400">Copied!</p>}
+          </div>
+        )}
+      </section>
 
       <section className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
         <h2 className="text-lg font-bold text-slate-50">Submit simulated posture</h2>

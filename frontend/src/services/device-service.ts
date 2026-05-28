@@ -1,5 +1,5 @@
 import { apiClient } from '@/services/api-client'
-import type { Device, DeviceCreate, DeviceList } from '@/types/device'
+import type { AgentTokenCreate, AgentTokenIssued, Device, DeviceCreate, DeviceList } from '@/types/device'
 import type { PostureReport, PostureReportCreate } from '@/types/posture'
 
 export const deviceService = {
@@ -25,6 +25,11 @@ export const deviceService = {
 
   async getLatestPosture(deviceId: number): Promise<PostureReport> {
     const response = await apiClient.get<PostureReport>(`/api/devices/${deviceId}/posture`)
+    return response.data
+  },
+
+  async issueAgentToken(deviceId: number, payload: AgentTokenCreate): Promise<AgentTokenIssued> {
+    const response = await apiClient.post<AgentTokenIssued>(`/api/devices/${deviceId}/agent-tokens`, payload)
     return response.data
   },
 }

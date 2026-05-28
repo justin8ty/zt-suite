@@ -20,3 +20,20 @@ export interface DeviceCreate {
   os_version?: string | null
   agent_version?: string | null
 }
+
+export interface AgentTokenCreate {
+  name: string
+}
+
+export interface AgentTokenRead {
+  id: number
+  device_id: number
+  name: string
+  created_at: string
+  last_used_at: string | null
+  revoked_at: string | null
+}
+
+export interface AgentTokenIssued extends AgentTokenRead {
+  token: string
+}
