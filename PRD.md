@@ -43,7 +43,7 @@
 * Firewall status check
 * Antivirus presence check
 * Disk encryption status check
-* Patch/update status target, currently best-effort/prototype-level
+* Patch/update status check using supported platform mechanisms where available
 * Pre-access compliance evaluation
 * Periodic posture re-validation
 
@@ -135,7 +135,7 @@
 * Edge-based processing: Agents perform feature engineering and ML inference locally
 * Target: pre-trained ML model shipped with agent (no runtime training)
 * Current: agent loads a local joblib model when present and falls back to heuristic detection when absent
-* Agent reporting endpoints currently include `POST /api/devices`, `POST /api/devices/{device_id}/posture`, `POST /api/traffic`, and `POST /api/alerts`
+* Agent reporting endpoints currently include `POST /api/devices/{device_id}/posture`, `POST /api/traffic`, and `POST /api/alerts`
 
 ### 6.2 Technology Stack
 
@@ -143,7 +143,7 @@
 * Frontend: React 19 + TypeScript 6 (Vite 8, TanStack Query, Tailwind CSS 4)
 * Frontend routing/state/forms: React Router 7, Zustand, React Hook Form, Zod, Axios
 * Database: SQLite
-* Auth: JWT (python-jose), TOTP (pyotp), Argon2id (passlib)
+* Auth: JWT (python-jose), TOTP (pyotp), Argon2id (passlib), hashed trusted-device and agent tokens
 * Agent runtime: Python 3.14+ currently (httpx, psutil, scapy, Pydantic, joblib)
 * IDS workspace: Python 3.13+ currently (pandas, numpy, scikit-learn, XGBoost, joblib)
 * ML target: pre-trained Isolation Forest for endpoint anomaly detection
@@ -160,17 +160,15 @@
 
 * Password hashing (Argon2id)
 * Encrypted communication (TLS)
-* Secure token storage target; current frontend prototype persists tokens in client-side storage and should be hardened later
-* Device trust tokens (30-day MFA bypass) target; not implemented in current prototype
+* Secure token storage target; current frontend prototype persists access/refresh auth state client-side for usability and should be hardened later
+* Trusted-device tokens support optional 30-day MFA bypass after successful MFA login; raw trusted-device tokens are returned as HttpOnly cookies and stored server-side only as hashes
+* Dedicated device-scoped agent tokens are stored server-side only as hashes and used for endpoint telemetry reporting
 * Audit-ready structured logs
 
 ### 6.5 Current Implementation / Prototype Deviations
 
 The current implementation intentionally differs from the target PRD in several areas. These gaps should be resolved later so the implementation and PRD align perfectly.
 
-* **Device trust token flow:** Implemented for browser-based login. Users can choose "Trust this device for 30 days" during MFA validation; subsequent password logins can bypass MFA when the trusted-device cookie is valid. Protected-resource access still separately checks device compliance using an `X-Device-ID` header.
-* **Agent authentication:** Implemented for telemetry reporting. Devices can be issued dedicated agent tokens, stored server-side only as hashes, and the agent uses `ZT_AGENT_TOKEN` plus `ZT_AGENT_DEVICE_ID` for posture, traffic, and alert reporting. Human JWTs still register/manage devices and issue/revoke agent tokens.
-* **Posture fidelity:** Firewall, antivirus, disk encryption, and OS patch/update status are implemented as best-effort checks. Windows Update and Ubuntu `apt` checks are supported where available; unknown patch status is preserved as unknown and excluded from compliance-score denominator instead of being treated as a failed check.
 * **Anomaly model:** The PRD target remains a shipped pre-trained Isolation Forest model. Current agent code supports local joblib inference but uses heuristic fallback if the model artifact is missing.
 * **IDS workspace:** `/ids` is separate from the runtime agent. It currently supports CICFlowMeter-style flow CSV training/inference and supervised classifiers (Random Forest, XGBoost, MLP) for experimentation and attack-simulation evaluation.
 * **Dashboard visualization:** Current frontend uses polling, metrics, forms, and tables. Rich chart-based anomaly visualization is still a target enhancement.
@@ -181,7 +179,6 @@ The current implementation intentionally differs from the target PRD in several 
 
 * Cooperative posture reporting → clearly documented trust assumptions
 * No hardware-backed attestation → simulation scope only
-* Prototype agent authentication uses user JWTs → replace with dedicated agent identity/token model
 * Missing model artifact falls back to heuristics → ship and validate the target model artifact before final evaluation
 * Pre-trained/public-dataset model → may not cover all attack patterns
 * No cross-device correlation → agent-based detection is per-endpoint only
