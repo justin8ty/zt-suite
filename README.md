@@ -2,9 +2,6 @@
 
 An FYP zero-trust security implementation for SME environments — identity-centric access control with MFA, endpoint posture verification, network traffic monitoring, and ML-based anomaly detection.
 
-See [PRD.md](./PRD.md) for product requirements.
-See [CHECKLIST.md](./CHECKLIST.md) for implementation progress.
-
 ---
 
 ## Prerequisites
@@ -12,10 +9,6 @@ See [CHECKLIST.md](./CHECKLIST.md) for implementation progress.
 ### Windows
 
 Wireshark is installed for dependency `npcap`.
-
-```
-choco install wireshark
-```
 
 ### Linux
 
@@ -70,4 +63,15 @@ npm run typecheck
 cd agent
 uv sync
 sudo uv run python -m src.main
+```
+
+### Unit+Int Testing Start
+
+```
+# backend
+uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload
+# frontend
+npm i && npm run dev
+# agent
+uv sync && uv run python -m src.main
 ```
