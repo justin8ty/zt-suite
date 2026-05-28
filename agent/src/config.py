@@ -92,6 +92,21 @@ class Settings(BaseSettings):
     capture_stats_interval: int = 30
     """Interval in seconds between traffic capture diagnostic logs."""
 
+    reporting_enabled: bool = False
+    """Whether to report posture, traffic, and alerts to the backend API."""
+
+    backend_url: str = "http://localhost:8000"
+    """Base URL for the backend API."""
+
+    access_token: str | None = None
+    """User JWT access token for backend API calls."""
+
+    device_id: int | None = None
+    """Backend device ID. If unset, the agent attempts to register the device."""
+
+    api_timeout: float = 10.0
+    """Backend API request timeout in seconds."""
+
 
 # Global settings instance - loaded once at module import
 settings = Settings()

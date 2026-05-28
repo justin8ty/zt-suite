@@ -19,6 +19,7 @@ from src.models.alert import AlertEnvelope
 from src.models.features import TrafficFeatureEnvelope
 from src.models.posture import PostureEnvelope
 from src.models.traffic import TrafficBatchEnvelope, TrafficRecord
+from src.services.api_client import ApiClient
 from src.services.feature_engineering import build_features
 from src.services.identity import get_agent_id
 
@@ -57,6 +58,7 @@ def _flush_batch(
     feature_output_file: TextIO | None,
     alert_output_file: TextIO | None,
     anomaly_detector: AnomalyDetector,
+    api_client: ApiClient,
     emergency: bool = False,
 ) -> None:
     """Flush accumulated records to output.
@@ -102,6 +104,10 @@ def _flush_batch(
         anomaly_result = anomaly_detector.score(features)
         alert = anomaly_detector.build_alert(features, anomaly_result)
         alert_envelope = AlertEnvelope(alert=alert) if alert is not None else None
+
+        api_client.report_traffic_batch(envelope)
+        if alert is not None:
+            api_client.report_alert(alert)
 
         json_output = envelope.model_dump_json()
         feature_json_output = feature_envelope.model_dump_json()
@@ -149,6 +155,7 @@ def _start_flush_timer(
     feature_output_file: TextIO | None,
     alert_output_file: TextIO | None,
     anomaly_detector: AnomalyDetector,
+    api_client: ApiClient,
 ) -> None:
     """Start recurring timer to flush batch at configured interval."""
     global _flush_timer
@@ -162,6 +169,7 @@ def _start_flush_timer(
             feature_output_file,
             alert_output_file,
             anomaly_detector,
+            api_client,
             emergency=False,
         )
 
@@ -183,6 +191,7 @@ def _write_posture_report(
     logger: logging.Logger,
     collector: PostureCollector,
     posture_output_file: TextIO | None,
+    api_client: ApiClient,
 ) -> None:
     """Collect and output one endpoint posture report."""
     with _posture_lock:
@@ -194,6 +203,7 @@ def _write_posture_report(
 
         envelope = PostureEnvelope(report=report)
         json_output = envelope.model_dump_json()
+        api_client.report_posture(report)
 
         if settings.output_mode == "stdout":
             print(json_output, flush=True)
@@ -247,6 +257,7 @@ def _start_capture_stats_timer(
 def _start_posture_timer(
     logger: logging.Logger,
     posture_output_file: TextIO | None,
+    api_client: ApiClient,
 ) -> None:
     """Start recurring timer to collect endpoint posture."""
     global _posture_timer
@@ -260,7 +271,7 @@ def _start_posture_timer(
     def collect_and_reschedule() -> None:
         global _posture_timer
 
-        _write_posture_report(logger, collector, posture_output_file)
+        _write_posture_report(logger, collector, posture_output_file, api_client)
 
         if not _shutdown_event.is_set():
             _posture_timer = Timer(settings.posture_interval, collect_and_reschedule)
@@ -280,6 +291,7 @@ def _create_record_handler(
     feature_output_file: TextIO | None,
     alert_output_file: TextIO | None,
     anomaly_detector: AnomalyDetector,
+    api_client: ApiClient,
 ) -> Callable[[TrafficRecord], None]:
     """Create callback that buffers records for batching."""
 
@@ -310,6 +322,7 @@ def _create_record_handler(
                 feature_output_file,
                 alert_output_file,
                 anomaly_detector,
+                api_client,
                 emergency=True,
             )
 
@@ -409,6 +422,7 @@ def main() -> int:
             return 1
 
     anomaly_detector = AnomalyDetector(logger=logger)
+    api_client = ApiClient(logger=logger)
 
     try:
         # Start periodic timers
@@ -418,8 +432,9 @@ def main() -> int:
             feature_output_file,
             alert_output_file,
             anomaly_detector,
+            api_client,
         )
-        _start_posture_timer(logger, posture_output_file)
+        _start_posture_timer(logger, posture_output_file, api_client)
 
         # Create and start collector
         collector = TrafficCollector(logger=logger)
@@ -429,6 +444,7 @@ def main() -> int:
             feature_output_file,
             alert_output_file,
             anomaly_detector,
+            api_client,
         )
 
         logger.info(
@@ -474,6 +490,7 @@ def main() -> int:
             feature_output_file,
             alert_output_file,
             anomaly_detector,
+            api_client,
             emergency=False,
         )
 
