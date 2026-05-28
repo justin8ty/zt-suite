@@ -18,7 +18,7 @@ export function MfaPage() {
     return <Navigate replace to={routes.login} />
   }
 
-  async function handleValidate(code: string) {
+  async function handleValidate(values: { code: string; trustDevice: boolean }) {
     const activeTempToken = tempToken
 
     if (!activeTempToken) {
@@ -30,7 +30,12 @@ export function MfaPage() {
     setError(null)
 
     try {
-      const tokens = await authService.validateMfa({ temp_token: activeTempToken, code })
+      const tokens = await authService.validateMfa({
+        temp_token: activeTempToken,
+        code: values.code,
+        trust_device: values.trustDevice,
+        device_label: window.navigator.userAgent,
+      })
       setTokens(tokens)
       navigate(routes.dashboard)
     } catch (mfaError) {

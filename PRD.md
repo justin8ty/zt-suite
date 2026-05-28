@@ -101,7 +101,7 @@
 8. Access granted / denied
 9. Event logged
 
-**Target enhancement:** trusted-device tokens may later support 30-day MFA bypass. The current prototype does not yet implement `device_token`-based MFA bypass.
+**Implemented enhancement:** trusted-device tokens support optional 30-day MFA bypass after a successful MFA login. The backend stores only a hash of the trusted-device token and returns the raw token as an HttpOnly cookie.
 
 ### 3.3 Security Monitoring Flow
 
@@ -168,7 +168,7 @@
 
 The current implementation intentionally differs from the target PRD in several areas. These gaps should be resolved later so the implementation and PRD align perfectly.
 
-* **Device trust token flow:** The target 30-day trusted-device MFA bypass is not implemented yet. Current login uses password + MFA challenge, while protected-resource access checks device compliance using an `X-Device-ID` header.
+* **Device trust token flow:** Implemented for browser-based login. Users can choose "Trust this device for 30 days" during MFA validation; subsequent password logins can bypass MFA when the trusted-device cookie is valid. Protected-resource access still separately checks device compliance using an `X-Device-ID` header.
 * **Agent authentication:** Current agent backend reporting uses a user JWT access token. A dedicated agent identity/token model is still needed for production-like deployment.
 * **Posture reporting endpoint:** Current posture submission is nested under devices: `POST /api/devices/{device_id}/posture`, not a standalone `POST /api/posture` endpoint.
 * **Posture fidelity:** Firewall, antivirus, and disk encryption are implemented as best-effort checks. Patch/update status is currently incomplete and may be reported conservatively.

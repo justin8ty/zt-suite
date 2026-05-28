@@ -6,6 +6,7 @@ and can be discovered by Alembic for migrations.
 
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
+from app.models.trusted_device import TrustedDevice
 from app.models.role import Role
 from app.models.access_log import AccessLog
 from app.models.device import Device
@@ -16,6 +17,7 @@ from app.models.alert import Alert
 __all__ = [
     "User",
     "RefreshToken",
+    "TrustedDevice",
     "Role",
     "AccessLog",
     "Device",

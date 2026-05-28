@@ -1,6 +1,9 @@
 """Security utilities for password hashing, JWT, and TOTP."""
 
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
+import secrets
 from typing import Any
 
 import pyotp
@@ -133,6 +136,20 @@ def get_totp_uri(account_name: str, secret: str) -> str:
     return pyotp.TOTP(secret).provisioning_uri(
         name=account_name, issuer_name=settings.mfa_issuer_name
     )
+
+
+def generate_trusted_device_token() -> str:
+    """Generate a random trusted-device token."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_trusted_device_token(token: str) -> str:
+    """Create a deterministic keyed hash for trusted-device token lookup."""
+    return hmac.new(
+        settings.secret_key.encode("utf-8"),
+        token.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def create_mfa_temp_token(subject: str | Any) -> str:

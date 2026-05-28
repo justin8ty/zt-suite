@@ -13,14 +13,16 @@ from app.core.exceptions import (
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    generate_trusted_device_token,
+    hash_trusted_device_token,
     verify_password,
     decode_token,
-    hash_password,
     verify_totp,
 )
 from app.models.refresh_token import RefreshToken
+from app.models.trusted_device import TrustedDevice
 from app.models.user import User
-from app.schemas.auth import LoginRequest, Token, TokenPayload
+from app.schemas.auth import LoginRequest, Token
 from app.services.user import user_service
 
 
@@ -209,7 +211,9 @@ class AuthService:
         return True
 
     @staticmethod
-    def validate_mfa_login(db: Session, temp_token: str, code: str) -> Token:
+    def validate_mfa_login(
+        db: Session, temp_token: str, code: str
+    ) -> tuple[Token, User]:
         """Validate MFA login step 2.
 
         Args:
@@ -218,7 +222,7 @@ class AuthService:
             code: TOTP code.
 
         Returns:
-            Access tokens.
+            Access tokens and authenticated user.
 
         Raises:
             TokenInvalidError: If temp_token is invalid.
@@ -245,7 +249,64 @@ class AuthService:
         if not verify_totp(user.mfa_secret, code):
             raise InvalidCredentialsError()
 
-        return AuthService.create_tokens(db, user)
+        return AuthService.create_tokens(db, user), user
+
+    @staticmethod
+    def get_valid_trusted_device(
+        db: Session, user: User, raw_token: str | None
+    ) -> TrustedDevice | None:
+        """Return a valid trusted-device record for this user/token, if any."""
+        if not raw_token:
+            return None
+
+        token_hash = hash_trusted_device_token(raw_token)
+        trusted_device = db.scalar(
+            select(TrustedDevice).where(
+                TrustedDevice.user_id == user.id,
+                TrustedDevice.token_hash == token_hash,
+                TrustedDevice.revoked_at.is_(None),
+            )
+        )
+
+        if not trusted_device:
+            return None
+
+        now = datetime.now(timezone.utc)
+        expires_at = trusted_device.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        if expires_at <= now:
+            return None
+
+        trusted_device.last_used_at = now
+        db.commit()
+        db.refresh(trusted_device)
+        return trusted_device
+
+    @staticmethod
+    def create_trusted_device(
+        db: Session,
+        user: User,
+        device_label: str | None = None,
+    ) -> tuple[str, TrustedDevice]:
+        """Create a new trusted-device token and persist only its hash."""
+        raw_token = generate_trusted_device_token()
+
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        trusted_device = TrustedDevice(
+            token_hash=hash_trusted_device_token(raw_token),
+            user_id=user.id,
+            device_label=device_label[:255] if device_label else None,
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(days=settings.trusted_device_expire_days),
+        )
+        db.add(trusted_device)
+        db.commit()
+        db.refresh(trusted_device)
+        return raw_token, trusted_device
 
 
 auth_service = AuthService()

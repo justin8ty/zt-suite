@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     # MFA Configuration
     mfa_issuer_name: str = "ZT Suite"
+    trusted_device_expire_days: int = 30
+    trusted_device_cookie_name: str = "trusted_device_token"
+    trusted_device_cookie_secure: bool = False
+    trusted_device_cookie_samesite: str = "lax"
 
     # First Admin (created on startup if no users exist)
     first_admin_email: str = "admin@example.com"

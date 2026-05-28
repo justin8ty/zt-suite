@@ -10,14 +10,20 @@ const inputClassName =
 const buttonClassName =
   'min-h-11 rounded-xl bg-gradient-to-br from-sky-400 to-green-400 px-5 font-bold text-slate-950 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0'
 
+interface MfaValidateValues {
+  code: string
+  trustDevice: boolean
+}
+
 interface MfaValidateFormProps {
   isSubmitting: boolean
   error: string | null
-  onSubmit: (code: string) => Promise<void>
+  onSubmit: (values: MfaValidateValues) => Promise<void>
 }
 
 export function MfaValidateForm({ isSubmitting, error, onSubmit }: MfaValidateFormProps) {
   const [code, setCode] = useState('')
+  const [trustDevice, setTrustDevice] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -30,7 +36,7 @@ export function MfaValidateForm({ isSubmitting, error, onSubmit }: MfaValidateFo
       return
     }
 
-    await onSubmit(result.data.code)
+    await onSubmit({ code: result.data.code, trustDevice })
   }
 
   return (
@@ -48,6 +54,20 @@ export function MfaValidateForm({ isSubmitting, error, onSubmit }: MfaValidateFo
           type="text"
           value={code}
         />
+      </label>
+
+      <label className="flex items-start gap-3 rounded-xl border border-slate-400/20 bg-slate-950/40 p-3 text-left text-sm text-slate-300">
+        <input
+          checked={trustDevice}
+          className="mt-1 h-4 w-4 rounded border-slate-500 bg-slate-950 text-cyan-300"
+          disabled={isSubmitting}
+          onChange={(event) => setTrustDevice(event.target.checked)}
+          type="checkbox"
+        />
+        <span>
+          <span className="block font-bold text-slate-200">Trust this device for 30 days</span>
+          <span className="block text-slate-400">Skip MFA on this browser after password login.</span>
+        </span>
       </label>
 
       {(validationError || error) && (

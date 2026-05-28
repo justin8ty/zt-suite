@@ -1,6 +1,6 @@
 """Authentication API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import DbSession, get_current_user
@@ -22,8 +22,22 @@ from app.schemas.auth import (
 from app.schemas.user import UserRead
 from app.services.access_log import access_log_service
 from app.services.auth import auth_service
+from app.core.config import get_settings
 
 router = APIRouter()
+settings = get_settings()
+
+
+def set_trusted_device_cookie(response: Response, token: str) -> None:
+    """Attach trusted-device token as an HttpOnly cookie."""
+    response.set_cookie(
+        key=settings.trusted_device_cookie_name,
+        value=token,
+        max_age=settings.trusted_device_expire_days * 24 * 60 * 60,
+        httponly=True,
+        secure=settings.trusted_device_cookie_secure,
+        samesite=settings.trusted_device_cookie_samesite,
+    )
 
 
 @router.post(
@@ -35,12 +49,39 @@ router = APIRouter()
 async def login(
     login_data: LoginRequest,
     db: DbSession,
+    trusted_device_token: str | None = Cookie(
+        default=None, alias=settings.trusted_device_cookie_name
+    ),
 ) -> Token | MFARequiredResponse:
     """Login with email and password."""
     try:
         user = auth_service.authenticate(db, login_data)
 
         if user.mfa_enabled:
+            trusted_device = auth_service.get_valid_trusted_device(
+                db, user, trusted_device_token
+            )
+            if trusted_device:
+                access_log_service.log_access(
+                    db=db,
+                    action="login_success_trusted_device",
+                    status="success",
+                    user_id=user.id,
+                    resource="/api/auth/login",
+                    details=f"MFA bypassed by trusted device {trusted_device.id}",
+                )
+                return auth_service.create_tokens(db, user)
+
+            if trusted_device_token:
+                access_log_service.log_access(
+                    db=db,
+                    action="trusted_device_invalid",
+                    status="failure",
+                    user_id=user.id,
+                    resource="/api/auth/login",
+                    details="Trusted device token missing, expired, revoked, or invalid",
+                )
+
             temp_token = create_mfa_temp_token(user.id)
             access_log_service.log_access(
                 db=db,
@@ -203,27 +244,32 @@ async def mfa_verify(
 async def mfa_validate(
     validate_data: MFAValidateRequest,
     db: DbSession,
+    response: Response,
 ) -> Token:
     """Validate MFA code and issue tokens."""
     try:
-        tokens = auth_service.validate_mfa_login(
+        tokens, user = auth_service.validate_mfa_login(
             db, validate_data.temp_token, validate_data.code
         )
-        # We need to decode the token to get the user ID for logging?
-        # Or validate_mfa_login could return user?
-        # Actually, validate_mfa_login validates the temp token which has the user ID.
-        # Let's decode temp token here just for logging (safe because auth_service validates it too)
-        from app.core.security import decode_token
 
-        payload = decode_token(validate_data.temp_token)
-        user_id = int(payload["sub"]) if payload else None
+        if validate_data.trust_device:
+            raw_token, trusted_device = auth_service.create_trusted_device(
+                db=db,
+                user=user,
+                device_label=validate_data.device_label,
+            )
+            set_trusted_device_cookie(response, raw_token)
+            details = f"MFA completed; trusted device {trusted_device.id} created"
+        else:
+            details = "MFA completed"
 
         access_log_service.log_access(
             db=db,
             action="mfa_login_success",
             status="success",
-            user_id=user_id,
+            user_id=user.id,
             resource="/api/auth/mfa/validate",
+            details=details,
         )
         return tokens
 

@@ -25,6 +25,8 @@ export interface RefreshRequest {
 export interface MFAValidateRequest {
   temp_token: string
   code: string
+  trust_device?: boolean
+  device_label?: string | null
 }
 
 export interface MFAEnrollResponse {

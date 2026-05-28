@@ -11,6 +11,7 @@ interface RetryableAxiosRequestConfig extends AxiosRequestConfig {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -44,9 +45,13 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true
 
     try {
-      const response = await axios.post<TokenResponse>(`${API_BASE_URL}/api/auth/refresh`, {
-        refresh_token: refreshToken,
-      })
+      const response = await axios.post<TokenResponse>(
+        `${API_BASE_URL}/api/auth/refresh`,
+        {
+          refresh_token: refreshToken,
+        },
+        { withCredentials: true },
+      )
 
       useAuthStore.getState().setTokens(response.data)
       originalRequest.headers = {

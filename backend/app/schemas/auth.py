@@ -56,3 +56,5 @@ class MFAValidateRequest(BaseModel):
 
     temp_token: str
     code: str
+    trust_device: bool = False
+    device_label: str | None = None
