@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import QRCode from 'qrcode'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { ErrorState } from '@/components/common/error-state'
 import { getApiErrorMessage } from '@/services/api-client'
@@ -13,6 +14,8 @@ const buttonClassName =
 export function MfaEnrollCard() {
   const queryClient = useQueryClient()
   const [code, setCode] = useState('')
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('')
+  const [qrCodeError, setQrCodeError] = useState('')
 
   const enrollMutation = useMutation({
     mutationFn: authService.enrollMfa,
@@ -22,6 +25,34 @@ export function MfaEnrollCard() {
     mutationFn: () => authService.verifyMfa({ code }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['auth', 'me'] }),
   })
+
+  useEffect(() => {
+    const provisioningUri = enrollMutation.data?.provisioning_uri
+    if (!provisioningUri) {
+      setQrCodeDataUrl('')
+      setQrCodeError('')
+      return
+    }
+
+    let isCurrent = true
+    QRCode.toDataURL(provisioningUri, { margin: 1, width: 220 })
+      .then((dataUrl) => {
+        if (isCurrent) {
+          setQrCodeDataUrl(dataUrl)
+          setQrCodeError('')
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setQrCodeDataUrl('')
+          setQrCodeError('Could not generate QR code. Use the secret below instead.')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [enrollMutation.data?.provisioning_uri])
 
   async function handleVerify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -44,15 +75,32 @@ export function MfaEnrollCard() {
 
       {enrollMutation.data && (
         <div className="mt-5 grid gap-4">
-          <div className="rounded-2xl border border-yellow-400/20 bg-slate-950/40 p-4">
-            <div className="text-sm font-bold">Secret</div>
-            <code className="mt-1 block break-all text-sm text-yellow-100">{enrollMutation.data.secret}</code>
-          </div>
-          <div className="rounded-2xl border border-yellow-400/20 bg-slate-950/40 p-4">
-            <div className="text-sm font-bold">Provisioning URI</div>
-            <code className="mt-1 block break-all text-xs text-yellow-100">
-              {enrollMutation.data.provisioning_uri}
-            </code>
+          <div className="grid gap-4 lg:grid-cols-[auto_1fr]">
+            <div className="rounded-2xl border border-yellow-400/20 bg-slate-950/40 p-4">
+              <div className="text-sm font-bold">Scan QR code</div>
+              <p className="mt-1 text-sm text-yellow-100/70">Open Google Authenticator, Microsoft Authenticator, or 1Password and scan this code.</p>
+              <div className="mt-4 flex min-h-[220px] items-center justify-center rounded-xl bg-white p-3">
+                {qrCodeDataUrl ? (
+                  <img alt="MFA authenticator QR code" className="h-[220px] w-[220px]" src={qrCodeDataUrl} />
+                ) : (
+                  <span className="text-center text-sm text-slate-500">Generating QR code...</span>
+                )}
+              </div>
+              {qrCodeError && <p className="mt-2 text-sm text-red-200">{qrCodeError}</p>}
+            </div>
+
+            <div className="grid gap-4">
+              <div className="rounded-2xl border border-yellow-400/20 bg-slate-950/40 p-4">
+                <div className="text-sm font-bold">Manual setup key</div>
+                <code className="mt-1 block break-all text-sm text-yellow-100">{enrollMutation.data.secret}</code>
+              </div>
+              <div className="rounded-2xl border border-yellow-400/20 bg-slate-950/40 p-4">
+                <div className="text-sm font-bold">Provisioning URI</div>
+                <code className="mt-1 block break-all text-xs text-yellow-100">
+                  {enrollMutation.data.provisioning_uri}
+                </code>
+              </div>
+            </div>
           </div>
 
           <form className="grid grid-cols-[1fr_auto] gap-3 max-sm:grid-cols-1" onSubmit={handleVerify}>
