@@ -33,7 +33,7 @@ class TokenPayload(BaseModel):
 class RefreshRequest(BaseModel):
     """Legacy refresh token request schema for non-browser clients."""
 
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class MFAEnrollResponse(BaseModel):

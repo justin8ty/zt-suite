@@ -3,7 +3,7 @@ import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth-store'
 import type { TokenResponse } from '@/types/auth'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 interface RetryableAxiosRequestConfig extends AxiosRequestConfig {
   _retry?: boolean
@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
     try {
       const response = await axios.post<TokenResponse>(
         `${API_BASE_URL}/api/auth/refresh`,
-        {},
+        null,
         { withCredentials: true },
       )
 

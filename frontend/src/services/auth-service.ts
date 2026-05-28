@@ -10,6 +10,8 @@ import type {
 } from '@/types/auth'
 import type { User } from '@/types/user'
 
+let refreshInFlight: Promise<TokenResponse> | null = null
+
 export const authService = {
   async login(payload: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>('/api/auth/login', payload)
@@ -31,13 +33,27 @@ export const authService = {
     return response.data
   },
 
-  async refresh(payload: RefreshRequest = {}): Promise<TokenResponse> {
-    const response = await apiClient.post<TokenResponse>('/api/auth/refresh', payload)
-    return response.data
+  async refresh(payload?: RefreshRequest): Promise<TokenResponse> {
+    if (!payload && refreshInFlight) {
+      return refreshInFlight
+    }
+
+    const refreshPromise = apiClient
+      .post<TokenResponse>('/api/auth/refresh', payload ?? null)
+      .then((response) => response.data)
+
+    if (!payload) {
+      refreshInFlight = refreshPromise.finally(() => {
+        refreshInFlight = null
+      })
+      return refreshInFlight
+    }
+
+    return refreshPromise
   },
 
-  async logout(payload: RefreshRequest = {}): Promise<void> {
-    await apiClient.post('/api/auth/logout', payload)
+  async logout(payload?: RefreshRequest): Promise<void> {
+    await apiClient.post('/api/auth/logout', payload ?? null)
   },
 
   async getMe(): Promise<User> {

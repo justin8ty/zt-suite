@@ -16,6 +16,7 @@ export function RequireAuth() {
     let isActive = true
 
     if (isAuthenticated) {
+      setIsRestoringSession(false)
       return () => {
         isActive = false
       }
@@ -24,13 +25,14 @@ export function RequireAuth() {
     authService
       .refresh()
       .then((tokens) => {
-        if (isActive) setTokens(tokens)
+        if (!isActive) return
+        setTokens(tokens)
+        setIsRestoringSession(false)
       })
       .catch(() => {
-        if (isActive) clearAuth()
-      })
-      .finally(() => {
-        if (isActive) setIsRestoringSession(false)
+        if (!isActive) return
+        clearAuth()
+        setIsRestoringSession(false)
       })
 
     return () => {
