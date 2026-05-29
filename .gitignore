@@ -41,3 +41,5 @@ agent/data/
 
 # SQLite database
 *.db
+frontend/playwright-report/
+frontend/test-results/
