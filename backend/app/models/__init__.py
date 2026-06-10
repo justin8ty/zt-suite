@@ -13,6 +13,7 @@ from app.models.access_log import AccessLog
 from app.models.device import Device
 from app.models.posture import PostureReport
 from app.models.traffic import TrafficRecord
+from app.models.flow import NetworkFlow
 from app.models.alert import Alert
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "Device",
     "PostureReport",
     "TrafficRecord",
+    "NetworkFlow",
     "Alert",
 ]

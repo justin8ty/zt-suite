@@ -14,6 +14,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: routes.dashboard },
   { label: 'Devices', path: routes.devices, securityOnly: true },
   { label: 'Traffic', path: routes.traffic, securityOnly: true },
+  { label: 'Flows', path: routes.flows, securityOnly: true },
   { label: 'Alerts', path: routes.alerts, securityOnly: true },
   { label: 'Users', path: routes.users, adminOnly: true },
   { label: 'Access Logs', path: routes.logs, adminOnly: true },

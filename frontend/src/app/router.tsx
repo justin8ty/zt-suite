@@ -8,6 +8,7 @@ import { DashboardPage } from '@/pages/dashboard-page'
 import { DeviceDetailPage } from '@/pages/device-detail-page'
 import { DevicesPage } from '@/pages/devices-page'
 import { LoginPage } from '@/pages/login-page'
+import { FlowsPage } from '@/pages/flows-page'
 import { LogsPage } from '@/pages/logs-page'
 import { MfaPage } from '@/pages/mfa-page'
 import { ProtectedFilesPage } from '@/pages/protected-files-page'
@@ -33,6 +34,7 @@ export function AppRouter() {
             <Route element={<DevicesPage />} path={routes.devices} />
             <Route element={<DeviceDetailPage />} path={`${routes.devices}/:deviceId`} />
             <Route element={<TrafficPage />} path={routes.traffic} />
+            <Route element={<FlowsPage />} path={routes.flows} />
             <Route element={<AlertsPage />} path={routes.alerts} />
           </Route>
 

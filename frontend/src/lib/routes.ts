@@ -5,6 +5,7 @@ export const routes = {
   users: '/users',
   devices: '/devices',
   traffic: '/traffic',
+  flows: '/flows',
   alerts: '/alerts',
   logs: '/logs',
   protectedFiles: '/protected-files',

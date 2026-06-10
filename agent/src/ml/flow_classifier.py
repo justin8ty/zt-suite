@@ -51,6 +51,7 @@ class FlowClassifier:
             result["malicious_score"] = 0.0
             result["prediction"] = 0
             result["prediction_label"] = "Unavailable"
+            result["detection_source"] = "unavailable"
             return result
 
         missing = set(FEATURE_COLUMNS) - set(result.columns)
@@ -63,6 +64,7 @@ class FlowClassifier:
             scored["malicious_score"] = np.array([], dtype=float)
             scored["prediction"] = np.array([], dtype=int)
             scored["prediction_label"] = pd.Series([], dtype=object)
+            scored["detection_source"] = pd.Series([], dtype=object)
             return scored
 
         x_scaled = self._scaler.transform(feature_df[FEATURE_COLUMNS].values)
@@ -79,6 +81,7 @@ class FlowClassifier:
         scored["malicious_score"] = scores
         scored["prediction"] = preds
         scored["prediction_label"] = scored["prediction"].map({0: "Benign", 1: "Malicious"})
+        scored["detection_source"] = "model"
         return scored
 
     def _warn(self, message: str, *args: object) -> None:

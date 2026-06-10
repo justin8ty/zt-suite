@@ -102,13 +102,14 @@ def create_app() -> FastAPI:
         }
 
     # Register routers
-    from app.api.routes import users, auth, logs, devices, traffic, alerts, protected
+    from app.api.routes import users, auth, logs, devices, traffic, flows, alerts, protected
 
     app.include_router(users.router, prefix="/api/users", tags=["Users"])
     app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
     app.include_router(logs.router, prefix="/api/logs", tags=["Access Logs"])
     app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
     app.include_router(traffic.router, prefix="/api/traffic", tags=["Traffic"])
+    app.include_router(flows.router, prefix="/api/flows", tags=["Network Flows"])
     app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
     app.include_router(
         protected.router, prefix="/api/protected", tags=["Protected Resources"]

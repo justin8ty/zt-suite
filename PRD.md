@@ -134,8 +134,8 @@
 * Central backend with REST APIs (storage and dashboard serving)
 * Edge-based processing: Agents perform feature engineering and ML inference locally
 * Target: pre-trained ML model shipped with agent (no runtime training)
-* Current: agent loads a local joblib model when present and falls back to heuristic detection when absent
-* Agent reporting endpoints currently include `POST /api/devices/{device_id}/posture`, `POST /api/traffic`, and `POST /api/alerts`
+* Current: agent flow mode converts bounded PCAP windows into CICFlowMeter flow rows, then scores them locally with a trained joblib model and paired scaler
+* Agent reporting endpoints currently include `POST /api/devices/{device_id}/posture`, `POST /api/traffic`, `POST /api/flows`, and `POST /api/alerts`
 
 ### 6.2 Technology Stack
 
@@ -144,10 +144,10 @@
 * Frontend routing/state/forms: React Router 7, Zustand, React Hook Form, Zod, Axios
 * Database: SQLite
 * Auth: JWT (python-jose), TOTP (pyotp), Argon2id (passlib), hashed trusted-device and agent tokens
-* Agent runtime: Python 3.14+ currently (httpx, psutil, scapy, Pydantic, joblib)
+* Agent runtime: Python 3.14+ currently (httpx, psutil, scapy, CICFlowMeter, pandas, numpy, scikit-learn, XGBoost, Pydantic, joblib)
 * IDS workspace: Python 3.13+ currently (pandas, numpy, scikit-learn, XGBoost, joblib)
-* ML target: pre-trained Isolation Forest for endpoint anomaly detection
-* ML current: generic joblib model support, heuristic fallback in agent, supervised classifier experiments in `/ids`
+* ML target: trained CICFlowMeter-compatible joblib model with paired scaler for endpoint flow anomaly/malicious-flow detection
+* ML current: `/ids` produces compatible supervised classifier artifacts (Random Forest, XGBoost, MLP); `/agent` flow mode can deploy those artifacts against CICFlowMeter-derived runtime rows
 * Tooling: uv, ruff, mypy, pytest, ESLint, TypeScript
 
 ### 6.3 Performance Requirements
@@ -167,15 +167,19 @@
 
 ### 6.5 Current Implementation / Prototype Deviations
 
-The current implementation intentionally differs from the target PRD in several areas. These gaps should be resolved later so the implementation and PRD align perfectly.
+The current implementation has mostly aligned the trained-model and runtime-monitoring paths. Remaining deviations are explicit operational limits rather than schema mismatches.
 
-* **Anomaly model:** The PRD target remains a shipped pre-trained Isolation Forest model. Current agent code supports local joblib inference but uses heuristic fallback if the model artifact is missing.
-* **IDS workspace:** `/ids` is separate from the runtime agent. It currently supports CICFlowMeter-style flow CSV training/inference and supervised classifiers (Random Forest, XGBoost, MLP) for experimentation and attack-simulation evaluation.
+* **Runtime flow parity:** Resolved for the prototype. `/agent` flow mode now captures bounded PCAP windows, converts them with CICFlowMeter, and scores the resulting CICFlowMeter-style rows with `/ids`-compatible joblib model and scaler artifacts.
+* **Model family:** The deployed model does not need to be a specific algorithm such as Isolation Forest. The required contract is that the model was trained on the same CICFlowMeter-compatible feature schema and ships with the paired preprocessing/scaler artifact.
+* **Flow storage:** Resolved at API/schema level. The backend has a first-class `POST /api/flows` ingestion path for scored flow rows in addition to legacy packet traffic ingestion.
+* **Model unavailable behavior:** Flow mode does not silently substitute heuristic detection. If the configured model/scaler is unavailable or scoring fails, rows are marked with an unavailable detection source and no model-backed flow alert is generated.
+* **IDS workspace:** `/ids` remains a separate training/experimentation workspace. This is acceptable for the prototype as long as the feature schema, preprocessing rules, model artifact, and scaler artifact remain compatible with `/agent` flow mode.
+* **Validation:** Runtime deployability should be proven with a PCAP-to-CICFlowMeter-to-model smoke script before final evaluation, using the same CICFlowMeter package/version intended for runtime.
 
 **Known Limitations & Mitigation:**
 
 * Cooperative posture reporting → clearly documented trust assumptions
 * No hardware-backed attestation → simulation scope only
-* Missing model artifact falls back to heuristics → ship and validate the target model artifact before final evaluation
+* Missing flow model/scaler disables model-backed flow alerts → ship and validate compatible artifacts before final evaluation
 * Pre-trained/public-dataset model → may not cover all attack patterns
 * No cross-device correlation → agent-based detection is per-endpoint only

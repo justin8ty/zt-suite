@@ -64,6 +64,27 @@ class ApiClient:
         }
         self._post("/api/traffic", payload, f"traffic batch {batch.batch_id}")
 
+    def report_flow_batch(
+        self,
+        batch_id: str,
+        flows: list[dict[str, object]],
+    ) -> None:
+        """Submit scored CICFlowMeter flow rows to backend."""
+        if not self._ready():
+            return
+
+        device_id = self._device_id
+        if device_id is None:
+            self._warn("Skipping flow report; no backend device_id available")
+            return
+
+        payload = {
+            "device_id": device_id,
+            "batch_id": batch_id,
+            "flows": flows,
+        }
+        self._post("/api/flows", payload, f"flow batch {batch_id}")
+
     def report_alert(self, alert: AlertRecord, source_ip: str | None = None) -> None:
         """Submit local alert to backend."""
         if not self._ready():
