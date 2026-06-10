@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     )
 
     # Network capture settings
+    traffic_mode: Literal["flow", "packet"] = "flow"
+    """Network monitoring mode.
+
+    flow = CICFlowMeter-backed IDS path; packet = legacy Scapy packet batches.
+    """
+
     interface: str | None = None
     """Network interface to capture on. None = all interfaces."""
 
@@ -73,10 +79,37 @@ class Settings(BaseSettings):
     """Whether local anomaly detection is enabled."""
 
     anomaly_model_path: str = "./src/ml/anomaly_model.joblib"
-    """Path to local anomaly model artifact."""
+    """Path to legacy packet-batch anomaly model artifact."""
 
     anomaly_threshold: float = 0.7
     """Score threshold for generating local alerts."""
+
+    flow_model_path: str = "../ids/models/mlp.joblib"
+    """Path to CICFlowMeter-compatible IDS model artifact used in flow mode."""
+
+    flow_scaler_path: str = "../ids/models/scaler.joblib"
+    """Path to scaler artifact paired with the flow IDS model."""
+
+    flow_prediction_threshold: float = 0.35
+    """Malicious score threshold for flow-model alerts."""
+
+    flow_window_interval: int = 60
+    """Seconds of traffic captured per PCAP window before CICFlowMeter conversion."""
+
+    flow_work_dir: str = "./data/flow-windows"
+    """Directory for transient PCAP and CICFlowMeter CSV files."""
+
+    flow_keep_artifacts: bool = False
+    """Whether to keep per-window PCAP/CSV artifacts after processing."""
+
+    cicflowmeter_command: str = "cicflowmeter"
+    """CICFlowMeter CLI command or absolute executable path."""
+
+    cicflowmeter_timeout: int = 120
+    """Maximum seconds allowed for one CICFlowMeter PCAP conversion."""
+
+    cicflowmeter_verbose: bool = False
+    """Whether to pass -v to CICFlowMeter."""
 
     alert_output_file: str = "./alerts.jsonl"
     """File path for local alerts when output_mode=file."""

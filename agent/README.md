@@ -54,7 +54,7 @@ Current and recommended stack:
 |---|---|
 | Runtime | Python 3.11+ preferred for project alignment |
 | Dependency management | `uv` |
-| Packet capture | Scapy |
+| Packet capture | Scapy for bounded PCAP windows; CICFlowMeter for canonical ML flow features |
 | System telemetry | `psutil`, `platform`, `socket` |
 | Scheduling | APScheduler |
 | HTTP client | `httpx` |
@@ -77,25 +77,25 @@ Python source during development
 
 ## Current Implementation Status
 
-The current agent implementation already contains a basic traffic capture pipeline:
+The current agent implementation supports two traffic modes:
 
 ```text
-agent/src/main.py
-agent/src/config.py
-agent/src/collectors/traffic.py
-agent/src/models/traffic.py
+flow   -> Scapy PCAP windows -> CICFlowMeter CSV rows -> IDS model/scaler inference
+packet -> legacy Scapy packet metadata -> custom batch features -> heuristic/model fallback
 ```
+
+Flow mode is the default because trained `/ids` models expect CICFlowMeter-style rows. Packet mode is kept as a legacy diagnostic/demo path.
 
 Current capabilities:
 
-- captures TCP/UDP packets using Scapy
-- extracts metadata only, not payloads
-- excludes localhost, link-local, multicast, and broadcast traffic
+- captures bounded TCP/UDP PCAP windows using Scapy/Npcap/libpcap
+- converts completed PCAP windows into CICFlowMeter flow CSV rows
+- scores flow rows with the configured IDS model and scaler
+- writes scored flows to JSONL and emits local alerts
 - supports optional interface selection
 - supports optional target IP filtering
-- batches records every configured interval
-- emergency flushes when the in-memory buffer reaches 50,000 records
-- outputs captured records to stdout or a JSONL file
+- supports legacy packet-batch capture via `ZT_AGENT_TRAFFIC_MODE=packet`
+- outputs captured/scored records to stdout or JSONL files
 - handles graceful shutdown signals
 
 Current record shape:
@@ -140,23 +140,17 @@ This posture data should be sent to the backend for compliance evaluation and da
 
 ### 2. Network Traffic Capture
 
-The agent should capture network metadata only:
+The default flow-mode capture path is:
 
-- source IP
-- destination IP
-- source port
-- destination port
-- protocol
-- packet size
-- timestamp
-- TCP flags
+```text
+bounded PCAP window -> CICFlowMeter -> CIC-style flow rows
+```
 
-Payload content should not be captured.
+Payload content is not used by detection; runtime inference consumes flow metadata/features. The legacy packet mode can still capture packet metadata directly for diagnostics.
 
 The capture strategy should:
 
 - filter TCP/UDP traffic only
-- exclude localhost/link-local/broadcast/multicast traffic
 - support interface selection
 - support lab/simulation filtering by target IP
 - require root/administrator privileges only where necessary
@@ -174,16 +168,9 @@ Target behavior:
 
 ### 4. Feature Engineering
 
-Per batch, the agent should convert packet metadata into model-ready features such as:
+Flow mode treats CICFlowMeter as the canonical feature generator. Runtime ML rows must match the `/ids` training schema, including forward/backward packet counts, packet-length statistics, IAT statistics, TCP flag counts, active/idle statistics, and subflow statistics.
 
-- packets per minute
-- bytes per minute
-- unique destination IP count
-- unique destination port count
-- average packet size
-- TCP SYN/FIN/RST/ACK ratios
-- well-known vs ephemeral port distribution
-- connection fan-out indicators
+The legacy packet mode still derives custom batch features such as packet/byte rates, unique destinations, TCP flag ratios, and port distribution for fallback heuristics.
 
 ### 5. Local Anomaly Detection
 
@@ -251,12 +238,19 @@ Current settings include:
 
 | Setting | Description | Default |
 |---|---|---|
+| `ZT_AGENT_TRAFFIC_MODE` | `flow` for CICFlowMeter IDS path, `packet` for legacy Scapy batches | `flow` |
 | `ZT_AGENT_INTERFACE` | Network interface to capture on | all interfaces |
 | `ZT_AGENT_TARGET_IP` | Optional IP filter for lab/simulation traffic | none |
 | `ZT_AGENT_LOG_LEVEL` | Logging level | `INFO` |
 | `ZT_AGENT_OUTPUT_MODE` | `stdout`, `file`, or `none` | `file` |
-| `ZT_AGENT_OUTPUT_FILE` | Output path when using file mode | `./traffic.jsonl` |
-| `ZT_AGENT_BATCH_INTERVAL` | Batch flush interval in seconds | `60` |
+| `ZT_AGENT_OUTPUT_FILE` | Legacy packet output path when using file mode | `./traffic.jsonl` |
+| `ZT_AGENT_FEATURE_OUTPUT_FILE` | Flow/scored-feature output path when using file mode | `./features.jsonl` |
+| `ZT_AGENT_FLOW_MODEL_PATH` | Flow IDS model artifact | `../ids/models/rf.joblib` |
+| `ZT_AGENT_FLOW_SCALER_PATH` | Flow IDS scaler artifact | `../ids/models/scaler.joblib` |
+| `ZT_AGENT_FLOW_PREDICTION_THRESHOLD` | Flow alert threshold | `0.35` |
+| `ZT_AGENT_FLOW_WINDOW_INTERVAL` | PCAP window duration in seconds | `60` |
+| `ZT_AGENT_CICFLOWMETER_COMMAND` | CICFlowMeter CLI command/path | `cicflowmeter` |
+| `ZT_AGENT_BATCH_INTERVAL` | Legacy packet-mode batch flush interval in seconds | `60` |
 
 Example `.env`:
 

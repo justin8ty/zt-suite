@@ -21,6 +21,7 @@ from src.models.posture import PostureEnvelope
 from src.models.traffic import TrafficBatchEnvelope, TrafficRecord
 from src.services.api_client import ApiClient
 from src.services.feature_engineering import build_features
+from src.services.flow_monitor import run_flow_monitor
 from src.services.identity import get_agent_id
 
 # Shutdown event for graceful termination
@@ -421,11 +422,25 @@ def main() -> int:
                 feature_output_file.close()
             return 1
 
-    anomaly_detector = AnomalyDetector(logger=logger)
     api_client = ApiClient(logger=logger)
 
     try:
-        # Start periodic timers
+        if settings.traffic_mode == "flow":
+            _start_posture_timer(logger, posture_output_file, api_client)
+            result = run_flow_monitor(
+                logger=logger,
+                flow_output_file=feature_output_file,
+                alert_output_file=alert_output_file,
+                api_client=api_client,
+                shutdown_event=_shutdown_event,
+            )
+            if _posture_timer is not None:
+                _posture_timer.cancel()
+            return result
+
+        anomaly_detector = AnomalyDetector(logger=logger)
+
+        # Start periodic timers for legacy packet-batch mode.
         _start_flush_timer(
             logger,
             output_file,
