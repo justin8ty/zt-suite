@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { ErrorState } from '@/components/common/error-state'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { useRole } from '@/hooks/use-role'
-import { formatBytes } from '@/lib/format'
-import { getApiErrorMessage } from '@/services/api-client'
 import { alertService } from '@/services/alert-service'
 import { deviceService } from '@/services/device-service'
 import { logService } from '@/services/log-service'
@@ -22,10 +20,10 @@ const chartCardClassName =
 type SeverityKey = 'critical' | 'high' | 'medium' | 'low' | 'other'
 
 const severityConfig: Record<SeverityKey, { label: string; className: string }> = {
-  critical: { label: 'Critical', className: 'bg-red-400' },
-  high: { label: 'High', className: 'bg-orange-300' },
-  medium: { label: 'Medium', className: 'bg-yellow-300' },
-  low: { label: 'Low', className: 'bg-sky-300' },
+  critical: { label: 'Critical', className: 'bg-red-500' },
+  high: { label: 'High', className: 'bg-red-500' },
+  medium: { label: 'Medium', className: 'bg-amber-400' },
+  low: { label: 'Low', className: 'bg-green-500' },
   other: { label: 'Other', className: 'bg-zinc-400' },
 }
 
@@ -78,68 +76,6 @@ function AlertSeverityChart({ alerts }: { alerts: Array<{ severity: string }> })
   )
 }
 
-function TrafficVolumeChart({
-  records,
-}: {
-  records: Array<{ bytes_received: number; bytes_sent: number; timestamp: string }>
-}) {
-  const bucketMap = records.reduce<Map<string, number>>((current, record) => {
-    const date = new Date(record.timestamp)
-    if (Number.isNaN(date.getTime())) return current
-
-    date.setSeconds(0, 0)
-    const key = date.toISOString()
-    current.set(key, (current.get(key) ?? 0) + record.bytes_sent + record.bytes_received)
-    return current
-  }, new Map())
-
-  const buckets = Array.from(bucketMap.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
-    .slice(-8)
-    .map(([key, bytes]) => ({
-      bytes,
-      label: new Date(key).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-    }))
-  const maxBytes = Math.max(...buckets.map((bucket) => bucket.bytes), 1)
-
-  return (
-    <article className={chartCardClassName}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-950">Traffic volume over time</h2>
-          <p className="mt-1 text-sm text-zinc-600">Recent uploaded metadata grouped by minute.</p>
-        </div>
-        <span className="rounded-full border border-zinc-950/10 px-3 py-1 text-sm font-semibold text-zinc-700">
-          {formatBytes(buckets.reduce((total, bucket) => total + bucket.bytes, 0))}
-        </span>
-      </div>
-      {buckets.length === 0 ? (
-        <p className="mt-6 text-sm text-zinc-600">No traffic records available yet.</p>
-      ) : (
-        <div className="mt-6 flex h-44 items-end gap-2 border-b border-zinc-950/10 pb-3">
-          {buckets.map((bucket) => {
-            const height = `${Math.max((bucket.bytes / maxBytes) * 100, 6)}%`
-
-            return (
-              <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={bucket.label}>
-                <div className="flex h-32 w-full items-end rounded-t-2xl bg-zinc-50 p-1">
-                  <div
-                    aria-label={`${bucket.label}: ${formatBytes(bucket.bytes)}`}
-                    className="w-full rounded-t-xl bg-emerald-600"
-                    style={{ height }}
-                    title={`${bucket.label}: ${formatBytes(bucket.bytes)}`}
-                  />
-                </div>
-                <span className="font-mono text-[0.68rem] text-zinc-600">{bucket.label}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </article>
-  )
-}
-
 function ComplianceBreakdownChart({ devices }: { devices: Array<{ is_compliant: boolean }> }) {
   const compliant = devices.filter((device) => device.is_compliant).length
   const nonCompliant = devices.length - compliant
@@ -154,7 +90,7 @@ function ComplianceBreakdownChart({ devices }: { devices: Array<{ is_compliant: 
           aria-label={`${compliantPercentage}% compliant devices`}
           className="grid size-36 shrink-0 place-items-center rounded-full"
           style={{
-            background: `conic-gradient(rgb(74 222 128) 0 ${compliantPercentage}%, rgb(248 113 113) ${compliantPercentage}% 100%)`,
+            background: `conic-gradient(rgb(34 197 94) 0 ${compliantPercentage}%, rgb(239 68 68) ${compliantPercentage}% 100%)`,
           }}
         >
           <div className="grid size-24 place-items-center rounded-full bg-white text-center shadow-inner shadow-zinc-950/10">
@@ -165,13 +101,13 @@ function ComplianceBreakdownChart({ devices }: { devices: Array<{ is_compliant: 
         <div className="grid flex-1 gap-3 text-sm">
           <div className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 px-4 py-3">
             <span className="flex items-center gap-2 text-zinc-700">
-              <span className="size-2.5 rounded-full bg-green-400" /> Compliant
+              <span className="size-2.5 rounded-full bg-green-500" /> Compliant
             </span>
             <strong className="text-zinc-950">{compliant}</strong>
           </div>
           <div className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 px-4 py-3">
             <span className="flex items-center gap-2 text-zinc-700">
-              <span className="size-2.5 rounded-full bg-red-400" /> Non-compliant
+              <span className="size-2.5 rounded-full bg-red-500" /> Non-compliant
             </span>
             <strong className="text-zinc-950">{nonCompliant}</strong>
           </div>
@@ -260,7 +196,7 @@ export function DashboardPage() {
         <MetricCard
           helper={canViewSecurityData ? `${highRiskAlerts} high or critical` : 'Admin/viewer only'}
           label="Open alerts"
-          tone={highRiskAlerts > 0 ? 'danger' : 'success'}
+          tone={highRiskAlerts > 0 ? 'danger' : alerts.length > 0 ? 'warning' : 'default'}
           value={canViewSecurityData ? alerts.length : 'Restricted'}
         />
         <MetricCard
@@ -272,23 +208,22 @@ export function DashboardPage() {
         <MetricCard
           helper={isAdmin ? 'From latest audit log page' : 'Admin only'}
           label="Access failures"
-          tone={accessFailures > 0 ? 'warning' : 'success'}
+          tone={accessFailures > 0 ? 'danger' : 'default'}
           value={isAdmin ? accessFailures : 'Restricted'}
         />
       </section>
 
       {canViewSecurityData && (
-        <section className="grid grid-cols-3 gap-5 max-2xl:grid-cols-2 max-lg:grid-cols-1" aria-label="Security visualizations">
+        <section className="grid grid-cols-2 gap-5 max-lg:grid-cols-1" aria-label="Security visualizations">
           <AlertSeverityChart alerts={alerts} />
-          <TrafficVolumeChart records={traffic} />
           <ComplianceBreakdownChart devices={devices} />
         </section>
       )}
 
-      <section className="grid grid-cols-2 gap-5 max-lg:grid-cols-1">
+      <section>
         <article className={panelClassName}>
           <h2 className="text-lg font-semibold text-zinc-950">Session posture</h2>
-          <dl className="mt-5 grid gap-3.5">
+          <dl className="mt-5 grid gap-3.5 md:grid-cols-2">
             <div className={detailRowClassName}>
               <dt className="text-zinc-600">Email</dt>
               <dd className="m-0 text-right font-semibold text-zinc-950 max-md:text-left">
@@ -314,20 +249,6 @@ export function DashboardPage() {
               </dd>
             </div>
           </dl>
-        </article>
-
-        <article className={panelClassName}>
-          <h2 className="text-lg font-semibold text-zinc-950">Data health</h2>
-          <ul className="mt-5 grid gap-3 pl-5 text-zinc-700">
-            <li>Devices: {devicesQuery.isError ? getApiErrorMessage(devicesQuery.error) : 'ready'}</li>
-            <li>
-              Alerts: {openAlertsQuery.isError ? getApiErrorMessage(openAlertsQuery.error) : 'ready'}
-            </li>
-            <li>Traffic: {trafficQuery.isError ? getApiErrorMessage(trafficQuery.error) : 'ready'}</li>
-            <li>
-              Logs: {logsQuery.isError ? getApiErrorMessage(logsQuery.error) : isAdmin ? 'ready' : 'admin only'}
-            </li>
-          </ul>
         </article>
       </section>
     </main>

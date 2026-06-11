@@ -7,7 +7,7 @@ interface MetricCardProps {
 
 const toneClassNames: Record<NonNullable<MetricCardProps['tone']>, string> = {
   default: 'text-zinc-950',
-  success: 'text-emerald-700',
+  success: 'text-green-700',
   warning: 'text-amber-700',
   danger: 'text-red-700',
 }

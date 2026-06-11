@@ -95,9 +95,9 @@ export function ProtectedFilesPage() {
 
       {filesMutation.data && (
         <section className="grid gap-4">
-          <div className="rounded-2xl border border-emerald-700/15 bg-emerald-50 p-5 text-emerald-800">
+          <div className="rounded-2xl border border-green-700/15 bg-green-50 p-5 text-green-800">
             <strong>{filesMutation.data.message}</strong>
-            <p className="mt-1 text-emerald-800/80">
+            <p className="mt-1 text-green-800/80">
               User {filesMutation.data.user} accessed files from device {filesMutation.data.device}.
             </p>
           </div>

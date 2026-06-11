@@ -113,7 +113,7 @@ export function MfaEnrollCard() {
 
       {enrollMutation.isError && <div className="mt-4"><ErrorState message={getApiErrorMessage(enrollMutation.error)} /></div>}
       {verifyMutation.isError && <div className="mt-4"><ErrorState message={getApiErrorMessage(verifyMutation.error)} /></div>}
-      {verifyMutation.isSuccess && <p className="mt-4 font-semibold text-emerald-700">MFA enabled successfully.</p>}
+      {verifyMutation.isSuccess && <p className="mt-4 font-semibold text-green-700">MFA enabled successfully.</p>}
     </section>
   )
 }

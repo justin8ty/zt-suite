@@ -24,11 +24,11 @@ const navItems: NavItem[] = [
 
 const signalClassNames: Record<NonNullable<NavItem['signal']>, string> = {
   neutral: 'bg-zinc-400',
-  identity: 'bg-blue-500',
-  posture: 'bg-emerald-500',
-  network: 'bg-cyan-500',
-  alert: 'bg-red-500',
-  audit: 'bg-amber-500',
+  identity: 'bg-zinc-500',
+  posture: 'bg-zinc-500',
+  network: 'bg-zinc-500',
+  alert: 'bg-zinc-500',
+  audit: 'bg-zinc-500',
 }
 
 export function AppSidebar() {

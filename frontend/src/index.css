@@ -30,7 +30,6 @@
     margin: 0;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 247, 244, 0.92)),
-      radial-gradient(circle at 18% 0%, rgba(16, 185, 129, 0.09), transparent 28rem),
       #f6f7f4;
   }
 
@@ -74,7 +73,7 @@
   }
 
   .ui-eyebrow {
-    @apply font-mono text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-emerald-700;
+    @apply font-mono text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-zinc-500;
   }
 
   .ui-title {
@@ -94,7 +93,7 @@
   }
 
   .ui-input {
-    @apply min-h-10 rounded-xl border border-zinc-950/10 bg-white px-3 py-2.5 text-sm text-zinc-950 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500;
+    @apply min-h-10 rounded-xl border border-zinc-950/10 bg-white px-3 py-2.5 text-sm text-zinc-950 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 focus:border-zinc-700 focus:ring-4 focus:ring-zinc-950/10 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500;
   }
 
   .ui-button-primary {
@@ -110,7 +109,7 @@
   }
 
   .ui-link {
-    @apply font-semibold text-emerald-700 no-underline transition-colors [@media(hover:hover)]:hover:text-emerald-900;
+    @apply font-semibold text-zinc-950 underline decoration-zinc-300 underline-offset-4 transition-colors [@media(hover:hover)]:hover:text-zinc-600;
   }
 
   .ui-table-card {
@@ -130,7 +129,7 @@
   }
 
   .ui-terminal {
-    @apply rounded-xl border border-zinc-950/10 bg-zinc-950 px-3 py-2 font-mono text-xs text-emerald-300 shadow-inner;
+    @apply rounded-xl border border-zinc-950/10 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-100 shadow-inner;
   }
 
   .ui-auth-grid {

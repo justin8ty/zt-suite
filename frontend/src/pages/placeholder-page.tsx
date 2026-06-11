@@ -7,7 +7,7 @@ export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   return (
     <main className="grid gap-5">
       <div className="px-1 py-2">
-        <div className="mb-3.5 text-xs font-extrabold tracking-[0.18em] text-emerald-700 uppercase">
+        <div className="ui-eyebrow mb-3">
           Coming next
         </div>
         <h1 className="text-4xl leading-none font-semibold tracking-tight text-zinc-950 md:text-6xl">{title}</h1>

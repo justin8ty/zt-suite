@@ -54,7 +54,7 @@ export function MfaValidateForm({ isSubmitting, error, onSubmit }: MfaValidateFo
       <label className="flex items-start gap-3 rounded-xl border border-zinc-950/10 bg-zinc-50 p-3 text-left text-sm text-zinc-600">
         <input
           checked={trustDevice}
-          className="mt-1 size-4 accent-emerald-700"
+          className="mt-1 size-4 accent-zinc-950"
           disabled={isSubmitting}
           onChange={(event) => setTrustDevice(event.target.checked)}
           type="checkbox"
