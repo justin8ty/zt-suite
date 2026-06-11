@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/auth-store'
 const DASHBOARD_REFETCH_MS = 10_000
 
 const panelClassName =
-  'ui-panel'
+  'ui-panel ui-card-hover'
 const detailRowClassName = 'flex justify-between gap-4 border-b border-zinc-950/10 pb-3 max-md:flex-col'
 const chartCardClassName =
   'ui-panel ui-card-hover'

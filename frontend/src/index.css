@@ -61,7 +61,25 @@
   }
 
   .ui-card-hover {
-    @apply transition-[transform,box-shadow,border-color] duration-200 ease-out active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-zinc-950/15 [@media(hover:hover)]:hover:shadow-[0_10px_30px_rgba(15,23,42,0.10)];
+    @apply transition-[transform,box-shadow,border-color] duration-200 ease-out active:scale-[0.98];
+  }
+
+  @media (hover: hover) {
+    .ui-card-hover:hover {
+      transform: translateY(-3px);
+      border-color: rgba(9, 9, 11, 0.16);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ui-card-hover {
+      transition-duration: 1ms;
+    }
+
+    .ui-card-hover:hover {
+      transform: none;
+    }
   }
 
   .ui-panel {
