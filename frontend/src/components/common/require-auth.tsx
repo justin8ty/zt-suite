@@ -16,7 +16,6 @@ export function RequireAuth() {
     let isActive = true
 
     if (isAuthenticated) {
-      setIsRestoringSession(false)
       return () => {
         isActive = false
       }
@@ -40,8 +39,8 @@ export function RequireAuth() {
     }
   }, [clearAuth, isAuthenticated, setTokens])
 
-  if (isRestoringSession) {
-    return <div className="grid min-h-screen place-items-center text-slate-300">Restoring session...</div>
+  if (isRestoringSession && !isAuthenticated) {
+    return <div className="grid min-h-screen place-items-center text-sm text-zinc-600">Restoring session...</div>
   }
 
   if (!isAuthenticated) {

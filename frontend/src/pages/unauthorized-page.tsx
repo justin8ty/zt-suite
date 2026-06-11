@@ -10,9 +10,9 @@ export function UnauthorizedPage() {
       eyebrow="Access denied"
       title="Unauthorized"
     >
-      <section className="rounded-3xl border border-red-400/30 bg-red-500/10 p-6 text-red-100 shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <section className="rounded-2xl border border-red-700/15 bg-red-50 p-6 text-red-700">
         <p>Ask an administrator to assign the required role if you need access.</p>
-        <Link className="mt-4 inline-block font-bold text-cyan-300 hover:text-cyan-200" to={routes.dashboard}>
+        <Link className="mt-4 inline-block ui-link" to={routes.dashboard}>
           Return to dashboard
         </Link>
       </section>

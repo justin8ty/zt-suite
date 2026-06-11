@@ -3,13 +3,13 @@ interface ErrorStateProps {
   message: string
 }
 
-export function ErrorState({ title = 'Something went wrong', message }: ErrorStateProps) {
+export function ErrorState({ title = 'We could not load this view', message }: ErrorStateProps) {
   return (
     <div
-      className="mb-5 grid gap-1 rounded-3xl border border-red-400/35 bg-slate-900/80 p-6 text-red-100 shadow-2xl shadow-black/30 backdrop-blur-xl"
+      className="mb-4 grid gap-1 rounded-2xl border border-red-700/15 bg-red-50 p-5 text-sm text-red-700"
       role="alert"
     >
-      <strong className="text-red-100">{title}</strong>
+      <strong className="font-semibold text-red-800">{title}</strong>
       <span>{message}</span>
     </div>
   )

@@ -14,10 +14,10 @@ import { useAuthStore } from '@/stores/auth-store'
 const DASHBOARD_REFETCH_MS = 10_000
 
 const panelClassName =
-  'rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl'
-const detailRowClassName = 'flex justify-between gap-4 border-b border-slate-400/15 pb-3 max-md:flex-col'
+  'ui-panel'
+const detailRowClassName = 'flex justify-between gap-4 border-b border-zinc-950/10 pb-3 max-md:flex-col'
 const chartCardClassName =
-  'rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl'
+  'ui-panel ui-card-hover'
 
 type SeverityKey = 'critical' | 'high' | 'medium' | 'low' | 'other'
 
@@ -26,7 +26,7 @@ const severityConfig: Record<SeverityKey, { label: string; className: string }> 
   high: { label: 'High', className: 'bg-orange-300' },
   medium: { label: 'Medium', className: 'bg-yellow-300' },
   low: { label: 'Low', className: 'bg-sky-300' },
-  other: { label: 'Other', className: 'bg-slate-400' },
+  other: { label: 'Other', className: 'bg-zinc-400' },
 }
 
 function normalizeSeverity(severity: string): SeverityKey {
@@ -51,10 +51,10 @@ function AlertSeverityChart({ alerts }: { alerts: Array<{ severity: string }> })
     <article className={chartCardClassName}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-50">Alert severity distribution</h2>
-          <p className="mt-1 text-sm text-slate-400">Open alerts grouped by severity.</p>
+          <h2 className="text-lg font-semibold text-zinc-950">Alert severity distribution</h2>
+          <p className="mt-1 text-sm text-zinc-600">Open alerts grouped by severity.</p>
         </div>
-        <span className="rounded-full border border-slate-400/20 px-3 py-1 text-sm font-bold text-slate-300">
+        <span className="rounded-full border border-zinc-950/10 px-3 py-1 text-sm font-semibold text-zinc-700">
           {alerts.length} total
         </span>
       </div>
@@ -65,11 +65,11 @@ function AlertSeverityChart({ alerts }: { alerts: Array<{ severity: string }> })
 
           return (
             <div className="grid grid-cols-[80px_1fr_32px] items-center gap-3" key={severity}>
-              <span className="text-sm text-slate-300">{severityConfig[severity].label}</span>
-              <div className="h-3 overflow-hidden rounded-full bg-slate-950/80">
+              <span className="text-sm text-zinc-700">{severityConfig[severity].label}</span>
+              <div className="h-3 overflow-hidden rounded-full bg-zinc-100">
                 <div className={`h-full rounded-full ${severityConfig[severity].className}`} style={{ width }} />
               </div>
-              <span className="text-right text-sm font-bold text-slate-50">{count}</span>
+              <span className="text-right text-sm font-semibold text-zinc-950">{count}</span>
             </div>
           )
         })}
@@ -98,7 +98,7 @@ function TrafficVolumeChart({
     .slice(-8)
     .map(([key, bytes]) => ({
       bytes,
-      label: new Date(key).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      label: new Date(key).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
     }))
   const maxBytes = Math.max(...buckets.map((bucket) => bucket.bytes), 1)
 
@@ -106,31 +106,31 @@ function TrafficVolumeChart({
     <article className={chartCardClassName}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-50">Traffic volume over time</h2>
-          <p className="mt-1 text-sm text-slate-400">Recent uploaded metadata grouped by minute.</p>
+          <h2 className="text-lg font-semibold text-zinc-950">Traffic volume over time</h2>
+          <p className="mt-1 text-sm text-zinc-600">Recent uploaded metadata grouped by minute.</p>
         </div>
-        <span className="rounded-full border border-slate-400/20 px-3 py-1 text-sm font-bold text-slate-300">
+        <span className="rounded-full border border-zinc-950/10 px-3 py-1 text-sm font-semibold text-zinc-700">
           {formatBytes(buckets.reduce((total, bucket) => total + bucket.bytes, 0))}
         </span>
       </div>
       {buckets.length === 0 ? (
-        <p className="mt-6 text-sm text-slate-400">No traffic records available yet.</p>
+        <p className="mt-6 text-sm text-zinc-600">No traffic records available yet.</p>
       ) : (
-        <div className="mt-6 flex h-44 items-end gap-2 border-b border-slate-400/15 pb-3">
+        <div className="mt-6 flex h-44 items-end gap-2 border-b border-zinc-950/10 pb-3">
           {buckets.map((bucket) => {
             const height = `${Math.max((bucket.bytes / maxBytes) * 100, 6)}%`
 
             return (
               <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={bucket.label}>
-                <div className="flex h-32 w-full items-end rounded-t-2xl bg-slate-950/50 p-1">
+                <div className="flex h-32 w-full items-end rounded-t-2xl bg-zinc-50 p-1">
                   <div
                     aria-label={`${bucket.label}: ${formatBytes(bucket.bytes)}`}
-                    className="w-full rounded-t-xl bg-gradient-to-t from-cyan-500 to-green-300"
+                    className="w-full rounded-t-xl bg-emerald-600"
                     style={{ height }}
                     title={`${bucket.label}: ${formatBytes(bucket.bytes)}`}
                   />
                 </div>
-                <span className="max-w-full truncate text-xs text-slate-400">{bucket.label}</span>
+                <span className="font-mono text-[0.68rem] text-zinc-600">{bucket.label}</span>
               </div>
             )
           })}
@@ -147,8 +147,8 @@ function ComplianceBreakdownChart({ devices }: { devices: Array<{ is_compliant: 
 
   return (
     <article className={chartCardClassName}>
-      <h2 className="text-lg font-bold text-slate-50">Device compliance breakdown</h2>
-      <p className="mt-1 text-sm text-slate-400">Current endpoint posture status.</p>
+      <h2 className="text-lg font-semibold text-zinc-950">Device compliance breakdown</h2>
+      <p className="mt-1 text-sm text-zinc-600">Current endpoint posture status.</p>
       <div className="mt-6 flex items-center gap-6 max-sm:flex-col">
         <div
           aria-label={`${compliantPercentage}% compliant devices`}
@@ -157,27 +157,27 @@ function ComplianceBreakdownChart({ devices }: { devices: Array<{ is_compliant: 
             background: `conic-gradient(rgb(74 222 128) 0 ${compliantPercentage}%, rgb(248 113 113) ${compliantPercentage}% 100%)`,
           }}
         >
-          <div className="grid size-24 place-items-center rounded-full bg-slate-900 text-center shadow-inner shadow-black/40">
-            <strong className="text-2xl text-slate-50">{compliantPercentage}%</strong>
-            <span className="text-xs text-slate-400">compliant</span>
+          <div className="grid size-24 place-items-center rounded-full bg-white text-center shadow-inner shadow-zinc-950/10">
+            <strong className="text-2xl text-zinc-950">{compliantPercentage}%</strong>
+            <span className="text-xs text-zinc-600">compliant</span>
           </div>
         </div>
         <div className="grid flex-1 gap-3 text-sm">
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-950/50 px-4 py-3">
-            <span className="flex items-center gap-2 text-slate-300">
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 px-4 py-3">
+            <span className="flex items-center gap-2 text-zinc-700">
               <span className="size-2.5 rounded-full bg-green-400" /> Compliant
             </span>
-            <strong className="text-slate-50">{compliant}</strong>
+            <strong className="text-zinc-950">{compliant}</strong>
           </div>
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-950/50 px-4 py-3">
-            <span className="flex items-center gap-2 text-slate-300">
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 px-4 py-3">
+            <span className="flex items-center gap-2 text-zinc-700">
               <span className="size-2.5 rounded-full bg-red-400" /> Non-compliant
             </span>
-            <strong className="text-slate-50">{nonCompliant}</strong>
+            <strong className="text-zinc-950">{nonCompliant}</strong>
           </div>
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-950/50 px-4 py-3">
-            <span className="text-slate-300">Registered devices</span>
-            <strong className="text-slate-50">{devices.length}</strong>
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 px-4 py-3">
+            <span className="text-zinc-700">Registered devices</span>
+            <strong className="text-zinc-950">{devices.length}</strong>
           </div>
         </div>
       </div>
@@ -229,15 +229,15 @@ export function DashboardPage() {
   const accessFailures = logs.filter((log) => log.status === 'failure').length
 
   return (
-    <main className="grid gap-5">
+    <main className="grid gap-5" id="main-content">
       <div className="px-1 py-2">
-        <div className="mb-3.5 text-xs font-extrabold tracking-[0.18em] text-cyan-300 uppercase">
+        <div className="ui-eyebrow mb-3">
           Live overview
         </div>
-        <h1 className="text-4xl leading-none font-bold tracking-tight text-slate-50 md:text-6xl">
+        <h1 className="ui-title">
           Security dashboard
         </h1>
-        <p className="mt-3.5 max-w-3xl text-slate-400">
+        <p className="mt-3.5 max-w-3xl text-zinc-600">
           Welcome{currentUser ? `, ${currentUser.email}` : ''}. Dashboard data refreshes every 10
           seconds where your role permits access.
         </p>
@@ -287,29 +287,29 @@ export function DashboardPage() {
 
       <section className="grid grid-cols-2 gap-5 max-lg:grid-cols-1">
         <article className={panelClassName}>
-          <h2 className="text-lg font-bold text-slate-50">Session posture</h2>
+          <h2 className="text-lg font-semibold text-zinc-950">Session posture</h2>
           <dl className="mt-5 grid gap-3.5">
             <div className={detailRowClassName}>
-              <dt className="text-slate-400">Email</dt>
-              <dd className="m-0 text-right font-bold text-slate-50 max-md:text-left">
+              <dt className="text-zinc-600">Email</dt>
+              <dd className="m-0 text-right font-semibold text-zinc-950 max-md:text-left">
                 {currentUser?.email ?? 'Unknown'}
               </dd>
             </div>
             <div className={detailRowClassName}>
-              <dt className="text-slate-400">MFA</dt>
-              <dd className="m-0 text-right font-bold text-slate-50 max-md:text-left">
+              <dt className="text-zinc-600">MFA</dt>
+              <dd className="m-0 text-right font-semibold text-zinc-950 max-md:text-left">
                 {currentUser?.mfa_enabled ? 'Enabled' : 'Not enabled'}
               </dd>
             </div>
             <div className={detailRowClassName}>
-              <dt className="text-slate-400">Status</dt>
-              <dd className="m-0 text-right font-bold text-slate-50 max-md:text-left">
+              <dt className="text-zinc-600">Status</dt>
+              <dd className="m-0 text-right font-semibold text-zinc-950 max-md:text-left">
                 {currentUser?.is_active ? 'Active' : 'Inactive'}
               </dd>
             </div>
             <div className={detailRowClassName}>
-              <dt className="text-slate-400">Roles</dt>
-              <dd className="m-0 text-right font-bold text-slate-50 max-md:text-left">
+              <dt className="text-zinc-600">Roles</dt>
+              <dd className="m-0 text-right font-semibold text-zinc-950 max-md:text-left">
                 {currentUser?.roles.map((role) => role.name).join(', ') || 'None'}
               </dd>
             </div>
@@ -317,8 +317,8 @@ export function DashboardPage() {
         </article>
 
         <article className={panelClassName}>
-          <h2 className="text-lg font-bold text-slate-50">Data health</h2>
-          <ul className="mt-5 grid gap-3 pl-5 text-slate-300">
+          <h2 className="text-lg font-semibold text-zinc-950">Data health</h2>
+          <ul className="mt-5 grid gap-3 pl-5 text-zinc-700">
             <li>Devices: {devicesQuery.isError ? getApiErrorMessage(devicesQuery.error) : 'ready'}</li>
             <li>
               Alerts: {openAlertsQuery.isError ? getApiErrorMessage(openAlertsQuery.error) : 'ready'}

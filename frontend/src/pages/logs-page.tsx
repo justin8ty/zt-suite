@@ -12,7 +12,7 @@ import { getApiErrorMessage } from '@/services/api-client'
 import { logService } from '@/services/log-service'
 
 const inputClassName =
-  'rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15'
+  'ui-input'
 
 export function LogsPage() {
   const [userId, setUserId] = useState('')
@@ -71,7 +71,7 @@ export function LogsPage() {
                     <StatusBadge tone={log.status === 'success' ? 'success' : 'danger'}>{log.status}</StatusBadge>
                   </td>
                   <td className={tdClassName}>{log.resource ?? '—'}</td>
-                  <td className={`${tdClassName} max-w-md text-xs text-slate-400`}>{log.details ?? '—'}</td>
+                  <td className={`${tdClassName} max-w-md text-xs text-zinc-600`}>{log.details ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

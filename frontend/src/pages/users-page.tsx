@@ -13,11 +13,11 @@ import { userService } from '@/services/user-service'
 import type { RoleName } from '@/types/user'
 
 const inputClassName =
-  'rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15'
+  'ui-input'
 const buttonClassName =
-  'min-h-10 rounded-xl bg-gradient-to-br from-sky-400 to-green-400 px-4 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60'
+  'ui-button-primary'
 const dangerButtonClassName =
-  'min-h-10 rounded-xl bg-red-400 px-4 font-bold text-red-950 disabled:cursor-not-allowed disabled:opacity-60'
+  'min-h-10 rounded-xl bg-red-400 px-4 font-semibold text-red-950 disabled:cursor-not-allowed disabled:opacity-60'
 
 export function UsersPage() {
   const queryClient = useQueryClient()
@@ -74,7 +74,7 @@ export function UsersPage() {
       title="Users"
     >
       <form
-        className="grid grid-cols-[1fr_1fr_auto] gap-3 rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl max-lg:grid-cols-1"
+        className="grid grid-cols-[1fr_1fr_auto] gap-3 ui-panel ui-card-hover max-lg:grid-cols-1"
         onSubmit={handleCreateUser}
       >
         <input
@@ -128,8 +128,8 @@ export function UsersPage() {
               {usersQuery.data.users.map((user) => (
                 <tr key={user.id}>
                   <td className={tdClassName}>
-                    <div className="font-bold text-slate-50">{user.email}</div>
-                    <div className="text-xs text-slate-400">ID {user.id}</div>
+                    <div className="font-semibold text-zinc-950">{user.email}</div>
+                    <div className="text-xs text-zinc-600">ID {user.id}</div>
                   </td>
                   <td className={tdClassName}>
                     <StatusBadge tone={user.is_active ? 'success' : 'danger'}>

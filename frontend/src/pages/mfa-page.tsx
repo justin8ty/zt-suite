@@ -46,17 +46,16 @@ export function MfaPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center px-4 py-8">
-      <section className="w-full max-w-md rounded-[1.75rem] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl">
-        <div className="mb-3.5 text-xs font-extrabold tracking-[0.18em] text-cyan-300 uppercase">
-          MFA Challenge
-        </div>
-        <h1 className="text-4xl leading-none font-bold tracking-tight text-slate-50 md:text-5xl">
-          Enter your TOTP code
-        </h1>
-        <p className="mt-3.5 text-slate-400">Use your authenticator app to complete login.</p>
-        <MfaValidateForm error={error} isSubmitting={isSubmitting} onSubmit={handleValidate} />
-      </section>
-    </main>
+    <>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <main className="ui-auth-grid" id="main-content">
+        <section className="ui-auth-card">
+          <div className="ui-eyebrow mb-3">MFA challenge</div>
+          <h1 className="ui-title md:text-5xl">Enter your TOTP code</h1>
+          <p className="ui-subtitle">Use your authenticator app to complete login.</p>
+          <MfaValidateForm error={error} isSubmitting={isSubmitting} onSubmit={handleValidate} />
+        </section>
+      </main>
+    </>
   )
 }

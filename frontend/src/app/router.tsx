@@ -12,7 +12,7 @@ import { FlowsPage } from '@/pages/flows-page'
 import { LogsPage } from '@/pages/logs-page'
 import { MfaPage } from '@/pages/mfa-page'
 import { ProtectedFilesPage } from '@/pages/protected-files-page'
-import { TrafficPage } from '@/pages/traffic-page'
+import { RegisterPage } from '@/pages/register-page'
 import { UnauthorizedPage } from '@/pages/unauthorized-page'
 import { UsersPage } from '@/pages/users-page'
 import { routes } from '@/lib/routes'
@@ -22,6 +22,7 @@ export function AppRouter() {
     <Routes>
       <Route element={<Navigate replace to={routes.dashboard} />} path="/" />
       <Route element={<LoginPage />} path={routes.login} />
+      <Route element={<RegisterPage />} path={routes.register} />
       <Route element={<MfaPage />} path={routes.mfa} />
 
       <Route element={<RequireAuth />}>
@@ -33,7 +34,6 @@ export function AppRouter() {
           <Route element={<RequireRole allowedRoles={['admin', 'viewer']} />}>
             <Route element={<DevicesPage />} path={routes.devices} />
             <Route element={<DeviceDetailPage />} path={`${routes.devices}/:deviceId`} />
-            <Route element={<TrafficPage />} path={routes.traffic} />
             <Route element={<FlowsPage />} path={routes.flows} />
             <Route element={<AlertsPage />} path={routes.alerts} />
           </Route>

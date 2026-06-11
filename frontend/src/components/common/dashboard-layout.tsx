@@ -11,14 +11,17 @@ export function DashboardLayout() {
   const currentUserQuery = useCurrentUser()
 
   return (
-    <div className="mx-auto grid min-h-screen w-[min(1440px,calc(100%-2rem))] grid-cols-[280px_minmax(0,1fr)] gap-4 py-4 max-lg:grid-cols-1">
-      <AppSidebar />
-      <div className="min-w-0">
-        <AppHeader />
-        {currentUserQuery.isLoading && <LoadingState message="Loading session..." />}
-        {currentUserQuery.isError && <ErrorState message={getApiErrorMessage(currentUserQuery.error)} />}
-        {!currentUserQuery.isLoading && !currentUserQuery.isError && <Outlet />}
+    <>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <div className="ui-shell">
+        <AppSidebar />
+        <div className="min-w-0">
+          <AppHeader />
+          {currentUserQuery.isLoading && <LoadingState message="Loading session..." />}
+          {currentUserQuery.isError && <ErrorState message={getApiErrorMessage(currentUserQuery.error)} />}
+          {!currentUserQuery.isLoading && !currentUserQuery.isError && <Outlet />}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

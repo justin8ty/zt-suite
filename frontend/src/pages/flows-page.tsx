@@ -12,7 +12,7 @@ import { getApiErrorMessage } from '@/services/api-client'
 import { flowService } from '@/services/flow-service'
 
 const inputClassName =
-  'rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15'
+  'ui-input'
 
 function packetTotal(flow: { total_fwd_packets: number | null; total_bwd_packets: number | null }) {
   return (flow.total_fwd_packets ?? 0) + (flow.total_bwd_packets ?? 0)
@@ -65,17 +65,17 @@ export function FlowsPage() {
       title="Network Flows"
     >
       <section className="grid grid-cols-3 gap-3.5 max-md:grid-cols-1">
-        <div className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl">
-          <span className="text-sm text-slate-400">Flows loaded</span>
-          <strong className="mt-2 block text-3xl text-slate-50">{flows.length}</strong>
+        <div className="ui-panel ui-card-hover">
+          <span className="text-sm text-zinc-600">Flows loaded</span>
+          <strong className="mt-2 block text-3xl text-zinc-950">{flows.length}</strong>
         </div>
-        <div className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl">
-          <span className="text-sm text-slate-400">Malicious predictions</span>
-          <strong className="mt-2 block text-3xl text-slate-50">{maliciousCount}</strong>
+        <div className="ui-panel ui-card-hover">
+          <span className="text-sm text-zinc-600">Malicious predictions</span>
+          <strong className="mt-2 block text-3xl text-zinc-950">{maliciousCount}</strong>
         </div>
-        <div className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl">
-          <span className="text-sm text-slate-400">Flow bytes</span>
-          <strong className="mt-2 block text-3xl text-slate-50">{formatBytes(totalBytes)}</strong>
+        <div className="ui-panel ui-card-hover">
+          <span className="text-sm text-zinc-600">Flow bytes</span>
+          <strong className="mt-2 block text-3xl text-zinc-950">{formatBytes(totalBytes)}</strong>
         </div>
       </section>
 

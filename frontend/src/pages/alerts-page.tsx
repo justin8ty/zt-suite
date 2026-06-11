@@ -13,9 +13,9 @@ import { alertService } from '@/services/alert-service'
 import { useRole } from '@/hooks/use-role'
 
 const inputClassName =
-  'rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15'
+  'ui-input'
 const buttonClassName =
-  'min-h-10 rounded-xl bg-gradient-to-br from-sky-400 to-green-400 px-4 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60'
+  'ui-button-primary'
 
 function severityTone(severity: string): 'success' | 'warning' | 'danger' | 'info' {
   if (severity === 'critical' || severity === 'high') return 'danger'
@@ -95,8 +95,8 @@ export function AlertsPage() {
               {alertsQuery.data.map((alert) => (
                 <tr key={alert.id}>
                   <td className={tdClassName}>
-                    <div className="font-bold text-slate-50">{alert.title}</div>
-                    <div className="max-w-md text-xs text-slate-400">{alert.description}</div>
+                    <div className="font-semibold text-zinc-950">{alert.title}</div>
+                    <div className="max-w-md text-xs text-zinc-600">{alert.description}</div>
                   </td>
                   <td className={tdClassName}>
                     <StatusBadge tone={severityTone(alert.severity.toLowerCase())}>{alert.severity}</StatusBadge>

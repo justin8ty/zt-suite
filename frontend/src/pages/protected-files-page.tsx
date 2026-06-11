@@ -15,9 +15,9 @@ import { protectedService } from '@/services/protected-service'
 import { useAuthStore } from '@/stores/auth-store'
 
 const inputClassName =
-  'rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15'
+  'ui-input'
 const buttonClassName =
-  'min-h-10 rounded-xl bg-gradient-to-br from-sky-400 to-green-400 px-4 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60'
+  'ui-button-primary'
 
 function sensitivityTone(sensitivity: string): 'success' | 'warning' | 'danger' | 'info' {
   if (sensitivity === 'restricted') return 'danger'
@@ -51,9 +51,9 @@ export function ProtectedFilesPage() {
     >
       {!currentUser?.mfa_enabled && <MfaEnrollCard />}
 
-      <section className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
-        <h2 className="text-lg font-bold text-slate-50">Access request</h2>
-        <p className="mt-2 text-slate-400">
+      <section className="ui-panel">
+        <h2 className="text-lg font-semibold text-zinc-950">Access request</h2>
+        <p className="mt-2 text-zinc-600">
           Select or enter a compliant device ID. The backend receives it as the X-Device-ID header.
         </p>
 
@@ -95,9 +95,9 @@ export function ProtectedFilesPage() {
 
       {filesMutation.data && (
         <section className="grid gap-4">
-          <div className="rounded-3xl border border-green-400/30 bg-green-500/10 p-5 text-green-100 shadow-2xl shadow-black/30 backdrop-blur-xl">
+          <div className="rounded-2xl border border-emerald-700/15 bg-emerald-50 p-5 text-emerald-800">
             <strong>{filesMutation.data.message}</strong>
-            <p className="mt-1 text-green-100/80">
+            <p className="mt-1 text-emerald-800/80">
               User {filesMutation.data.user} accessed files from device {filesMutation.data.device}.
             </p>
           </div>
@@ -115,7 +115,7 @@ export function ProtectedFilesPage() {
                 {filesMutation.data.files.map((file) => (
                   <tr key={file.name}>
                     <td className={tdClassName}>
-                      <span className="font-bold text-slate-50">{file.name}</span>
+                      <span className="font-semibold text-zinc-950">{file.name}</span>
                     </td>
                     <td className={tdClassName}>{file.size}</td>
                     <td className={tdClassName}>

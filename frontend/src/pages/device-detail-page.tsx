@@ -13,9 +13,9 @@ import { deviceService } from '@/services/device-service'
 import type { AgentTokenIssued } from '@/types/device'
 import type { PostureReportCreate } from '@/types/posture'
 
-const checkboxClassName = 'size-4 accent-sky-400'
+const checkboxClassName = 'size-4 accent-emerald-700'
 const buttonClassName =
-  'min-h-10 rounded-xl bg-gradient-to-br from-sky-400 to-green-400 px-4 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60'
+  'ui-button-primary'
 
 export function DeviceDetailPage() {
   const queryClient = useQueryClient()
@@ -70,7 +70,7 @@ export function DeviceDetailPage() {
 
   return (
     <PageShell
-      actions={<Link className="font-bold text-cyan-300 hover:text-cyan-200" to={routes.devices}>Back to devices</Link>}
+      actions={<Link className="ui-link" to={routes.devices}>Back to devices</Link>}
       description="Inspect endpoint metadata and latest posture evaluation."
       eyebrow="Device detail"
       title={deviceQuery.data?.hostname ?? 'Device'}
@@ -80,24 +80,24 @@ export function DeviceDetailPage() {
 
       {deviceQuery.data && (
         <section className="grid grid-cols-2 gap-5 max-lg:grid-cols-1">
-          <article className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
-            <h2 className="text-lg font-bold text-slate-50">Device profile</h2>
-            <dl className="mt-5 grid gap-3.5 text-slate-200">
-              <div className="flex justify-between border-b border-slate-400/15 pb-3"><dt className="text-slate-400">OS</dt><dd>{deviceQuery.data.os_type} {deviceQuery.data.os_version ?? ''}</dd></div>
-              <div className="flex justify-between border-b border-slate-400/15 pb-3"><dt className="text-slate-400">Agent</dt><dd>{deviceQuery.data.agent_version ?? '—'}</dd></div>
-              <div className="flex justify-between border-b border-slate-400/15 pb-3"><dt className="text-slate-400">Owner</dt><dd>{deviceQuery.data.user_id ?? '—'}</dd></div>
-              <div className="flex justify-between border-b border-slate-400/15 pb-3"><dt className="text-slate-400">Last seen</dt><dd>{formatDateTime(deviceQuery.data.last_seen)}</dd></div>
-              <div className="flex justify-between border-b border-slate-400/15 pb-3"><dt className="text-slate-400">Compliance</dt><dd><StatusBadge tone={deviceQuery.data.is_compliant ? 'success' : 'danger'}>{deviceQuery.data.is_compliant ? 'Compliant' : 'Non-compliant'}</StatusBadge></dd></div>
+          <article className="ui-panel">
+            <h2 className="text-lg font-semibold text-zinc-950">Device profile</h2>
+            <dl className="mt-5 grid gap-3.5 text-zinc-700">
+              <div className="flex justify-between border-b border-zinc-950/10 pb-3"><dt className="text-zinc-600">OS</dt><dd>{deviceQuery.data.os_type} {deviceQuery.data.os_version ?? ''}</dd></div>
+              <div className="flex justify-between border-b border-zinc-950/10 pb-3"><dt className="text-zinc-600">Agent</dt><dd>{deviceQuery.data.agent_version ?? '—'}</dd></div>
+              <div className="flex justify-between border-b border-zinc-950/10 pb-3"><dt className="text-zinc-600">Owner</dt><dd>{deviceQuery.data.user_id ?? '—'}</dd></div>
+              <div className="flex justify-between border-b border-zinc-950/10 pb-3"><dt className="text-zinc-600">Last seen</dt><dd>{formatDateTime(deviceQuery.data.last_seen)}</dd></div>
+              <div className="flex justify-between border-b border-zinc-950/10 pb-3"><dt className="text-zinc-600">Compliance</dt><dd><StatusBadge tone={deviceQuery.data.is_compliant ? 'success' : 'danger'}>{deviceQuery.data.is_compliant ? 'Compliant' : 'Non-compliant'}</StatusBadge></dd></div>
             </dl>
           </article>
 
-          <article className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
-            <h2 className="text-lg font-bold text-slate-50">Latest posture</h2>
-            {postureQuery.isLoading && <p className="mt-5 text-slate-400">Loading posture...</p>}
-            {postureQuery.isError && <p className="mt-5 text-slate-400">No posture report found yet.</p>}
+          <article className="ui-panel">
+            <h2 className="text-lg font-semibold text-zinc-950">Latest posture</h2>
+            {postureQuery.isLoading && <p className="mt-5 text-zinc-600">Loading posture...</p>}
+            {postureQuery.isError && <p className="mt-5 text-zinc-600">No posture report found yet.</p>}
             {postureQuery.data && (
-              <div className="mt-5 grid gap-3 text-slate-200">
-                <div>Score: <strong className="text-slate-50">{postureQuery.data.compliance_score}/100</strong></div>
+              <div className="mt-5 grid gap-3 text-zinc-700">
+                <div>Score: <strong className="text-zinc-950">{postureQuery.data.compliance_score}/100</strong></div>
                 <div>Antivirus: {postureQuery.data.antivirus_present && postureQuery.data.antivirus_enabled ? 'OK' : 'Fail'}</div>
                 <div>Firewall: {postureQuery.data.firewall_enabled ? 'OK' : 'Fail'}</div>
                 <div>Disk encryption: {postureQuery.data.disk_encrypted ? 'OK' : 'Fail'}</div>
@@ -109,15 +109,15 @@ export function DeviceDetailPage() {
         </section>
       )}
 
-      <section className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-50">
+      <section className="ui-panel">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-950">
           <svg className="size-5 text-amber-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Agent tokens
         </h2>
         <div className="mt-5 flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
-            <label className="mb-1 block text-xs text-slate-400" htmlFor="token-name">Token name</label>
+            <label className="mb-1 block text-xs text-zinc-600" htmlFor="token-name">Token name</label>
             <input
-              className="w-full rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15"
+              className="w-full ui-input"
               id="token-name"
               onChange={(event) => setTokenName(event.target.value)}
               placeholder="e.g. workstation-alpha"
@@ -139,12 +139,13 @@ export function DeviceDetailPage() {
         )}
 
         {issuedToken && (
-          <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-950/30 p-4">
-            <p className="mb-2 text-sm font-bold text-amber-300">Token issued — copy it now, it won&apos;t be shown again</p>
+          <div className="mt-5 rounded-2xl border border-amber-700/15 bg-amber-50 p-4">
+            <p className="mb-2 text-sm font-semibold text-amber-700">Token issued — copy it now, it won&apos;t be shown again</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 overflow-x-auto rounded-xl bg-slate-950/80 px-3 py-2 text-sm text-slate-50">{issuedToken.token}</code>
+              <code className="flex-1 overflow-x-auto rounded-xl bg-zinc-950 px-3 py-2 text-sm text-zinc-950">{issuedToken.token}</code>
               <button
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-50"
+                aria-label="Copy token"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-zinc-950/10 bg-white text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
                 onClick={() => { navigator.clipboard.writeText(issuedToken.token); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
                 title="Copy token"
                 type="button"
@@ -152,14 +153,14 @@ export function DeviceDetailPage() {
                 <svg className="size-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect height="13" rx="2" ry="2" width="13" x="9" y="9"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
               </button>
             </div>
-            {copied && <p className="mt-1 text-xs text-green-400">Copied!</p>}
+            {copied && <p className="mt-1 text-xs text-emerald-600">Copied!</p>}
           </div>
         )}
       </section>
 
-      <section className="rounded-3xl border border-slate-400/20 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
-        <h2 className="text-lg font-bold text-slate-50">Submit simulated posture</h2>
-        <div className="mt-5 grid grid-cols-5 gap-3 text-sm text-slate-200 max-xl:grid-cols-2 max-sm:grid-cols-1">
+      <section className="ui-panel">
+        <h2 className="text-lg font-semibold text-zinc-950">Submit simulated posture</h2>
+        <div className="mt-5 grid grid-cols-5 gap-3 text-sm text-zinc-700 max-xl:grid-cols-2 max-sm:grid-cols-1">
           {Object.entries(posture).map(([key, value]) => (
             <label className="flex items-center gap-2" key={key}>
               <input className={checkboxClassName} checked={value} onChange={(event) => setPostureField(key as keyof PostureReportCreate, event.target.checked)} type="checkbox" />

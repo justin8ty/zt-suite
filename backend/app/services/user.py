@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
+from app.models.role import Role
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 
@@ -83,13 +84,20 @@ class UserService:
         if existing:
             raise ValueError(f"Email {user_in.email} already registered")
 
-        # Create user with hashed password
+        default_role = db.query(Role).filter(Role.name == "user").first()
+        if not default_role:
+            default_role = Role(name="user", description="Standard user access")
+            db.add(default_role)
+            db.flush()
+
+        # Create user with hashed password and the default RBAC role.
         user = User(
             email=user_in.email,
             password_hash=hash_password(user_in.password),
             is_active=True,
             mfa_enabled=False,
         )
+        user.roles.append(default_role)
 
         db.add(user)
         db.commit()

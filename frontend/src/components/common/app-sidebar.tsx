@@ -8,19 +8,28 @@ interface NavItem {
   path: string
   adminOnly?: boolean
   securityOnly?: boolean
+  signal?: 'neutral' | 'identity' | 'posture' | 'network' | 'alert' | 'audit'
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', path: routes.dashboard },
-  { label: 'Devices', path: routes.devices, securityOnly: true },
-  { label: 'Traffic', path: routes.traffic, securityOnly: true },
-  { label: 'Flows', path: routes.flows, securityOnly: true },
-  { label: 'Alerts', path: routes.alerts, securityOnly: true },
-  { label: 'Users', path: routes.users, adminOnly: true },
-  { label: 'Access Logs', path: routes.logs, adminOnly: true },
-  { label: 'Protected Files', path: routes.protectedFiles },
+  { label: 'Dashboard', path: routes.dashboard, signal: 'neutral' },
+  { label: 'Devices', path: routes.devices, securityOnly: true, signal: 'posture' },
+  { label: 'Flows', path: routes.flows, securityOnly: true, signal: 'network' },
+  { label: 'Alerts', path: routes.alerts, securityOnly: true, signal: 'alert' },
+  { label: 'Users', path: routes.users, adminOnly: true, signal: 'identity' },
+  { label: 'Access Logs', path: routes.logs, adminOnly: true, signal: 'audit' },
+  { label: 'Protected Files', path: routes.protectedFiles, signal: 'identity' },
   { label: 'Unauthorized', path: routes.unauthorized },
 ]
+
+const signalClassNames: Record<NonNullable<NavItem['signal']>, string> = {
+  neutral: 'bg-zinc-400',
+  identity: 'bg-blue-500',
+  posture: 'bg-emerald-500',
+  network: 'bg-cyan-500',
+  alert: 'bg-red-500',
+  audit: 'bg-amber-500',
+}
 
 export function AppSidebar() {
   const { isAdmin, canViewSecurityData } = useRole()
@@ -41,28 +50,31 @@ export function AppSidebar() {
   })
 
   return (
-    <aside className="sticky top-4 h-[calc(100vh-2rem)] rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl max-lg:static max-lg:h-auto">
-      <div className="mb-7 flex items-center gap-3">
-        <div className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-green-400 font-black text-slate-950">
+    <aside className="sticky top-4 h-[calc(100vh-2rem)] rounded-2xl border border-zinc-950/10 bg-zinc-950 p-4 text-white shadow-[0_18px_60px_rgba(15,23,42,0.22)] max-lg:static max-lg:h-auto">
+      <div className="mb-7 flex items-center gap-3 px-1">
+        <div className="grid size-10 place-items-center rounded-xl bg-white font-mono text-sm font-semibold text-zinc-950">
           ZT
         </div>
         <div>
-          <strong className="block text-slate-50">ZT Suite</strong>
-          <span className="block text-sm text-slate-400">Security Console</span>
+          <strong className="block text-sm font-semibold tracking-[-0.012em] text-white">ZT Suite</strong>
+          <span className="block font-mono text-[0.68rem] uppercase tracking-[0.16em] text-zinc-400">Security console</span>
         </div>
       </div>
 
-      <nav className="grid gap-2 max-lg:grid-cols-2 max-sm:grid-cols-1" aria-label="Main navigation">
+      <nav className="grid gap-1.5 max-lg:grid-cols-2 max-sm:grid-cols-1" aria-label="Main navigation">
         {visibleItems.map((item) => (
           <NavLink
             className={({ isActive }) =>
-              `rounded-2xl border px-3.5 py-3 text-slate-300 no-underline transition hover:border-sky-400/30 hover:bg-sky-400/10 hover:text-slate-50 ${
-                isActive ? 'border-sky-400/30 bg-sky-400/10 text-slate-50' : 'border-transparent'
+              `group flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium no-underline transition-[background-color,color,transform] duration-150 active:scale-95 ${
+                isActive
+                  ? 'bg-white text-zinc-950'
+                  : 'text-zinc-400 [@media(hover:hover)]:hover:bg-white/8 [@media(hover:hover)]:hover:text-white'
               }`
             }
             key={item.path}
             to={item.path}
           >
+            <span className={`size-1.5 rounded-full ${signalClassNames[item.signal ?? 'neutral']}`} />
             {item.label}
           </NavLink>
         ))}

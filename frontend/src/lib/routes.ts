@@ -1,10 +1,10 @@
 export const routes = {
   login: '/login',
+  register: '/register',
   mfa: '/mfa',
   dashboard: '/dashboard',
   users: '/users',
   devices: '/devices',
-  traffic: '/traffic',
   flows: '/flows',
   alerts: '/alerts',
   logs: '/logs',

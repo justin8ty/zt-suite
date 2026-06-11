@@ -14,9 +14,9 @@ import { getApiErrorMessage } from '@/services/api-client'
 import { deviceService } from '@/services/device-service'
 
 const inputClassName =
-  'rounded-xl border border-slate-400/30 bg-slate-950/60 px-3 py-2.5 text-slate-50 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/15'
+  'ui-input'
 const buttonClassName =
-  'min-h-10 rounded-xl bg-gradient-to-br from-sky-400 to-green-400 px-4 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60'
+  'ui-button-primary'
 
 export function DevicesPage() {
   const queryClient = useQueryClient()
@@ -66,7 +66,7 @@ export function DevicesPage() {
       title="Devices"
     >
       <form
-        className="grid grid-cols-[1fr_160px_1fr_1fr_auto] gap-3 rounded-3xl border border-slate-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl max-xl:grid-cols-1"
+        className="grid grid-cols-[1fr_160px_1fr_1fr_auto] gap-3 ui-panel ui-card-hover max-xl:grid-cols-1"
         onSubmit={handleRegister}
       >
         <input className={inputClassName} onChange={(event) => setHostname(event.target.value)} placeholder="hostname" required value={hostname} />
@@ -109,8 +109,8 @@ export function DevicesPage() {
               {devicesQuery.data.devices.map((device) => (
                 <tr key={device.id}>
                   <td className={tdClassName}>
-                    <div className="font-bold text-slate-50">{device.hostname}</div>
-                    <div className="text-xs text-slate-400">ID {device.id}</div>
+                    <div className="font-semibold text-zinc-950">{device.hostname}</div>
+                    <div className="text-xs text-zinc-600">ID {device.id}</div>
                   </td>
                   <td className={tdClassName}>{device.os_type} {device.os_version ?? ''}</td>
                   <td className={tdClassName}>{device.agent_version ?? '—'}</td>
@@ -122,7 +122,7 @@ export function DevicesPage() {
                   <td className={tdClassName}>{device.user_id ?? '—'}</td>
                   <td className={tdClassName}>{formatDateTime(device.last_seen)}</td>
                   <td className={tdClassName}>
-                    <Link className="font-bold text-cyan-300 hover:text-cyan-200" to={`${routes.devices}/${device.id}`}>
+                    <Link className="ui-link" to={`${routes.devices}/${device.id}`}>
                       Open
                     </Link>
                   </td>
