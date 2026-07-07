@@ -14,6 +14,8 @@ import { flowService } from '@/services/flow-service'
 const inputClassName =
   'ui-input'
 
+const pageSize = 200
+
 function packetTotal(flow: { total_fwd_packets: number | null; total_bwd_packets: number | null }) {
   return (flow.total_fwd_packets ?? 0) + (flow.total_bwd_packets ?? 0)
 }
@@ -25,19 +27,24 @@ function byteTotal(flow: { total_fwd_bytes: number | null; total_bwd_bytes: numb
 export function FlowsPage() {
   const [deviceId, setDeviceId] = useState('')
   const [prediction, setPrediction] = useState('')
+  const [page, setPage] = useState(1)
+  const skip = (page - 1) * pageSize
 
   const flowsQuery = useQuery({
-    queryKey: ['flows', deviceId, prediction],
+    queryKey: ['flows', deviceId, prediction, page],
     queryFn: () =>
       flowService.list({
-        limit: 200,
+        skip,
+        limit: pageSize + 1,
         device_id: deviceId ? Number(deviceId) : undefined,
         prediction: prediction ? Number(prediction) : undefined,
       }),
     refetchInterval: 10_000,
   })
 
-  const flows = flowsQuery.data ?? []
+  const fetchedFlows = flowsQuery.data ?? []
+  const flows = fetchedFlows.slice(0, pageSize)
+  const hasNextPage = fetchedFlows.length > pageSize
   const maliciousCount = flows.filter((flow) => flow.prediction === 1).length
   const totalBytes = flows.reduce((total, flow) => total + byteTotal(flow), 0)
 
@@ -48,12 +55,22 @@ export function FlowsPage() {
           <input
             className={inputClassName}
             min="1"
-            onChange={(event) => setDeviceId(event.target.value)}
+            onChange={(event) => {
+              setDeviceId(event.target.value)
+              setPage(1)
+            }}
             placeholder="Filter device ID"
             type="number"
             value={deviceId}
           />
-          <select className={inputClassName} onChange={(event) => setPrediction(event.target.value)} value={prediction}>
+          <select
+            className={inputClassName}
+            onChange={(event) => {
+              setPrediction(event.target.value)
+              setPage(1)
+            }}
+            value={prediction}
+          >
             <option value="">All predictions</option>
             <option value="1">Malicious only</option>
             <option value="0">Benign only</option>
@@ -66,7 +83,7 @@ export function FlowsPage() {
     >
       <section className="grid grid-cols-3 gap-3.5 max-md:grid-cols-1">
         <div className="ui-panel ui-card-hover">
-          <span className="text-sm text-zinc-600">Flows loaded</span>
+          <span className="text-sm text-zinc-600">Flows on page</span>
           <strong className="mt-2 block text-3xl text-zinc-950">{flows.length}</strong>
         </div>
         <div className="ui-panel ui-card-hover">
@@ -88,6 +105,30 @@ export function FlowsPage() {
 
       {flowsQuery.data && flowsQuery.data.length > 0 && (
         <TableCard>
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 text-sm text-zinc-600 max-sm:flex-col max-sm:items-start">
+            <span>
+              Page {page} · Showing {skip + 1}-{skip + flows.length}
+              {flowsQuery.isFetching ? ' · Refreshing...' : ''}
+            </span>
+            <div className="flex gap-2">
+              <button
+                className="ui-button-secondary"
+                disabled={page === 1 || flowsQuery.isFetching}
+                onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+                type="button"
+              >
+                Previous
+              </button>
+              <button
+                className="ui-button-secondary"
+                disabled={!hasNextPage || flowsQuery.isFetching}
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
+          </div>
           <table className={tableClassName}>
             <thead>
               <tr>
@@ -103,7 +144,7 @@ export function FlowsPage() {
               </tr>
             </thead>
             <tbody>
-              {flowsQuery.data.map((flow) => (
+              {flows.map((flow) => (
                 <tr key={flow.id}>
                   <td className={tdClassName}>{formatDateTime(flow.timestamp)}</td>
                   <td className={tdClassName}>{flow.device_id}</td>

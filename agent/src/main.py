@@ -1,5 +1,6 @@
 """ZT Suite Traffic Capture Agent entry point."""
 
+import getpass
 import logging
 import platform
 import signal
@@ -34,6 +35,129 @@ _posture_timer: Timer | None = None
 _capture_stats_timer: Timer | None = None
 _flush_lock = Lock()
 _posture_lock = Lock()
+
+
+_ENV_CONFIG_KEYS = {
+    "device_id": "ZT_AGENT_DEVICE_ID",
+    "agent_token": "ZT_AGENT_AGENT_TOKEN",
+}
+
+
+def _mask_secret(value: str | None) -> str:
+    """Return a display-safe token preview."""
+    if not value:
+        return "not set"
+    if len(value) <= 8:
+        return "*" * len(value)
+    return f"{value[:4]}...{value[-4:]}"
+
+
+def _prompt_yes_no(prompt: str, default: bool) -> bool:
+    """Prompt for a yes/no answer."""
+    suffix = "[Y/n]" if default else "[y/N]"
+    while True:
+        answer = input(f"{prompt} {suffix}: ").strip().lower()
+        if not answer:
+            return default
+        if answer in {"y", "yes"}:
+            return True
+        if answer in {"n", "no"}:
+            return False
+        print("Please answer yes or no.")
+
+
+def _dotenv_value(value: str) -> str:
+    """Format a value for a .env file."""
+    must_quote = value == "" or any(
+        char.isspace() or char in {'#', '"', "'", "\\"} for char in value
+    )
+    if must_quote:
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return value
+
+
+def _save_agent_backend_config(device_id: int, agent_token: str) -> None:
+    """Persist backend device credentials to the local .env file."""
+    env_path = Path(".env")
+    lines = (
+        env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+    )
+    replacements = {
+        _ENV_CONFIG_KEYS["device_id"]: str(device_id),
+        _ENV_CONFIG_KEYS["agent_token"]: _dotenv_value(agent_token),
+    }
+    seen: set[str] = set()
+    updated_lines: list[str] = []
+
+    for line in lines:
+        stripped = line.lstrip()
+        matched_key = None
+        for key in replacements:
+            if stripped.startswith(f"{key}="):
+                matched_key = key
+                break
+
+        if matched_key is None:
+            updated_lines.append(line)
+            continue
+
+        prefix = line[: len(line) - len(stripped)]
+        updated_lines.append(f"{prefix}{matched_key}={replacements[matched_key]}")
+        seen.add(matched_key)
+
+    if updated_lines and updated_lines[-1] != "":
+        updated_lines.append("")
+
+    for key, value in replacements.items():
+        if key not in seen:
+            updated_lines.append(f"{key}={value}")
+
+    env_path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
+
+
+def _prompt_agent_backend_config() -> None:
+    """Review and optionally update backend device credentials before startup."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        return
+
+    print("ZT Suite Agent backend configuration")
+    device_id_display = settings.device_id if settings.device_id is not None else "not set"
+    print(f"Device ID: {device_id_display}")
+    print(f"Agent token: {_mask_secret(settings.agent_token)}")
+
+    has_required_config = settings.device_id is not None and bool(settings.agent_token)
+    if has_required_config:
+        should_change = _prompt_yes_no(
+            "Change these values before starting?", default=False
+        )
+    else:
+        print("Device ID and agent token are required for backend reporting.")
+        should_change = _prompt_yes_no("Configure them now?", default=True)
+
+    if not should_change:
+        return
+
+    while True:
+        raw_device_id = input("Device ID: ").strip()
+        try:
+            device_id = int(raw_device_id)
+            if device_id <= 0:
+                raise ValueError
+            break
+        except ValueError:
+            print("Device ID must be a positive integer.")
+
+    while True:
+        agent_token = getpass.getpass("Agent token: ").strip()
+        if agent_token:
+            break
+        print("Agent token cannot be empty.")
+
+    _save_agent_backend_config(device_id=device_id, agent_token=agent_token)
+    settings.device_id = device_id
+    settings.agent_token = agent_token
+    print("Saved backend configuration to .env.")
 
 
 def _setup_logging() -> logging.Logger:
@@ -339,6 +463,7 @@ def main() -> int:
     """Main entry point for the traffic capture agent."""
     global _flush_timer, _posture_timer, _capture_stats_timer
 
+    _prompt_agent_backend_config()
     logger = _setup_logging()
 
     # Register signal handlers for graceful shutdown
