@@ -65,7 +65,7 @@ export function AppSidebar() {
         {visibleItems.map((item) => (
           <NavLink
             className={({ isActive }) =>
-              `group flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium no-underline transition-[background-color,color,transform] duration-150 active:scale-95 ${
+              `group flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium no-underline transition-[background-color,color,transform] duration-150 ${
                 isActive
                   ? 'bg-white text-zinc-950'
                   : 'text-zinc-400 [@media(hover:hover)]:hover:bg-white/8 [@media(hover:hover)]:hover:text-white'

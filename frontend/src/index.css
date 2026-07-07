@@ -61,7 +61,7 @@
   }
 
   .ui-card-hover {
-    @apply transition-[transform,box-shadow,border-color] duration-200 ease-out active:scale-[0.98];
+    @apply transition-[transform,box-shadow,border-color] duration-200 ease-out;
   }
 
   @media (hover: hover) {
@@ -115,15 +115,15 @@
   }
 
   .ui-button-primary {
-    @apply inline-flex min-h-10 items-center justify-center rounded-xl bg-zinc-950 px-4 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,23,42,0.16)] transition-[transform,box-shadow,background-color] duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:bg-zinc-800 [@media(hover:hover)]:hover:shadow-[0_8px_20px_rgba(15,23,42,0.16)];
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl bg-zinc-950 px-4 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,23,42,0.16)] transition-[transform,box-shadow,background-color] duration-150 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:bg-zinc-800 [@media(hover:hover)]:hover:shadow-[0_8px_20px_rgba(15,23,42,0.16)];
   }
 
   .ui-button-secondary {
-    @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-zinc-950/10 bg-white px-4 text-sm font-semibold text-zinc-800 transition-[transform,box-shadow,border-color,background-color] duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-zinc-950/15 [@media(hover:hover)]:hover:bg-zinc-50 [@media(hover:hover)]:hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)];
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-zinc-950/10 bg-white px-4 text-sm font-semibold text-zinc-800 transition-[transform,box-shadow,border-color,background-color] duration-150 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-zinc-950/15 [@media(hover:hover)]:hover:bg-zinc-50 [@media(hover:hover)]:hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)];
   }
 
   .ui-button-danger {
-    @apply inline-flex min-h-10 items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition-[transform,background-color] duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:hover)]:hover:bg-red-700;
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition-[transform,background-color] duration-150 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:hover)]:hover:bg-red-700;
   }
 
   .ui-link {
