@@ -150,6 +150,12 @@ class UserService:
         db.commit()
 
     @staticmethod
+    def count_users_with_role(db: Session, role_name: str) -> int:
+        """Count users currently assigned a role."""
+        stmt = select(func.count()).select_from(User).join(User.roles).where(Role.name == role_name)
+        return db.execute(stmt).scalar() or 0
+
+    @staticmethod
     def deactivate(db: Session, user: User) -> User:
         """Deactivate a user (soft delete).
 

@@ -194,3 +194,46 @@ async def assign_role(
         db.refresh(user)
 
     return UserRead.model_validate(user)
+
+
+@router.delete(
+    "/{user_id}/roles",
+    response_model=UserRead,
+    dependencies=[Depends(require_roles(RoleName.ADMIN))],
+    summary="Remove role from user",
+    description="Remove a role from a user. Requires admin role.",
+)
+async def remove_role(
+    user_id: int,
+    role_name: RoleName,
+    db: DbSession,
+) -> UserRead:
+    """Remove role from user."""
+    user = user_service.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {user_id} not found",
+        )
+
+    role = db.query(Role).filter(Role.name == role_name).first()
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Role {role_name} not found",
+        )
+
+    if role not in user.roles:
+        return UserRead.model_validate(user)
+
+    if role_name == RoleName.ADMIN and user_service.count_users_with_role(db, role_name) <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove the last admin role",
+        )
+
+    user.roles.remove(role)
+    db.commit()
+    db.refresh(user)
+
+    return UserRead.model_validate(user)

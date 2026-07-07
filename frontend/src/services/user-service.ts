@@ -48,4 +48,11 @@ export const userService = {
     })
     return response.data
   },
+
+  async removeRole(userId: number, roleName: RoleName): Promise<User> {
+    const response = await apiClient.delete<User>(`/api/users/${userId}/roles`, {
+      params: { role_name: roleName },
+    })
+    return response.data
+  },
 }

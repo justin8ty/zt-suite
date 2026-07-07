@@ -18,6 +18,8 @@ const buttonClassName =
   'ui-button-primary'
 const dangerButtonClassName =
   'min-h-10 rounded-xl bg-red-400 px-4 font-semibold text-red-950 disabled:cursor-not-allowed disabled:opacity-60'
+const smallDangerButtonClassName =
+  'rounded-lg bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-60'
 
 export function UsersPage() {
   const queryClient = useQueryClient()
@@ -42,6 +44,12 @@ export function UsersPage() {
   const assignRoleMutation = useMutation({
     mutationFn: ({ userId, roleName }: { userId: number; roleName: RoleName }) =>
       userService.assignRole(userId, roleName),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+
+  const removeRoleMutation = useMutation({
+    mutationFn: ({ userId, roleName }: { userId: number; roleName: RoleName }) =>
+      userService.removeRole(userId, roleName),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
 
@@ -102,6 +110,7 @@ export function UsersPage() {
       {formError && <ErrorState title="Invalid user details" message={formError} />}
       {createUserMutation.isError && <ErrorState message={getApiErrorMessage(createUserMutation.error)} />}
       {assignRoleMutation.isError && <ErrorState message={getApiErrorMessage(assignRoleMutation.error)} />}
+      {removeRoleMutation.isError && <ErrorState message={getApiErrorMessage(removeRoleMutation.error)} />}
       {deleteUserMutation.isError && <ErrorState message={getApiErrorMessage(deleteUserMutation.error)} />}
 
       {usersQuery.isLoading && <LoadingState message="Loading users..." />}
@@ -141,7 +150,24 @@ export function UsersPage() {
                       {user.mfa_enabled ? 'Enabled' : 'Disabled'}
                     </StatusBadge>
                   </td>
-                  <td className={tdClassName}>{user.roles.map((role) => role.name).join(', ') || '—'}</td>
+                  <td className={tdClassName}>
+                    <div className="flex flex-wrap gap-2">
+                      {user.roles.length === 0 && '—'}
+                      {user.roles.map((role) => (
+                        <span key={role.id} className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">
+                          {role.name}
+                          <ConfirmButton
+                            className={smallDangerButtonClassName}
+                            confirmMessage={`Remove ${role.name} role from ${user.email}?`}
+                            disabled={removeRoleMutation.isPending}
+                            onConfirm={() => removeRoleMutation.mutate({ userId: user.id, roleName: role.name as RoleName })}
+                          >
+                            Remove
+                          </ConfirmButton>
+                        </span>
+                      ))}
+                    </div>
+                  </td>
                   <td className={tdClassName}>
                     <select
                       className={inputClassName}
