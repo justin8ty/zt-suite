@@ -10,4 +10,14 @@ export const protectedService = {
     })
     return response.data
   },
+
+  async getFileContent(fileId: string, deviceId: number): Promise<Blob> {
+    const response = await apiClient.get<Blob>(`/api/protected/files/${fileId}/content`, {
+      headers: {
+        'X-Device-ID': deviceId,
+      },
+      responseType: 'blob',
+    })
+    return response.data
+  },
 }

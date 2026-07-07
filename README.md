@@ -132,8 +132,9 @@ nmap -sV -p 8080 192.168.211.130
 Configs:
 
 ```
-9
-ztag_5xITauDK06LMR9xd72jSSMcwRfbQx_1rorhFj4BDijo
+ZT_AGENT_BACKEND_URL=http://192.168.100.95:8000
+ZT_AGENT_DEVICE_ID=9
+ZT_AGENT_AGENT_TOKEN=ztag_5xITauDK06LMR9xd72jSSMcwRfbQx_1rorhFj4BDijo
 
 PasswordAuthentication yes
 MaxAuthTries 100
