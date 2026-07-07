@@ -24,6 +24,7 @@ from src.services.api_client import ApiClient
 from src.services.feature_engineering import build_features
 from src.services.flow_monitor import run_flow_monitor
 from src.services.identity import get_agent_id
+from src.services.local_identity_server import LocalIdentityServer
 
 # Shutdown event for graceful termination
 _shutdown_event = Event()
@@ -548,6 +549,8 @@ def main() -> int:
             return 1
 
     api_client = ApiClient(logger=logger)
+    local_identity_server = LocalIdentityServer(logger=logger)
+    local_identity_server.start()
 
     try:
         if settings.traffic_mode == "flow":
@@ -637,6 +640,7 @@ def main() -> int:
         return 0
 
     finally:
+        local_identity_server.stop()
         if output_file is not None:
             output_file.close()
         if posture_output_file is not None:

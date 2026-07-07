@@ -141,6 +141,15 @@ class Settings(BaseSettings):
     api_timeout: float = 10.0
     """Backend API request timeout in seconds."""
 
+    local_identity_enabled: bool = True
+    """Whether to expose the loopback identity endpoint for browser detection."""
+
+    local_identity_host: str = "127.0.0.1"
+    """Host for the local browser-to-agent identity endpoint."""
+
+    local_identity_port: int = 8756
+    """Port for the local browser-to-agent identity endpoint."""
+
     @field_validator(
         "interface",
         "target_ip",

@@ -1,5 +1,4 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 
 import { MfaEnrollCard } from '@/components/auth/mfa-enroll-card'
 import { ErrorState } from '@/components/common/error-state'
@@ -7,15 +6,12 @@ import { LoadingState } from '@/components/common/loading-state'
 import { PageShell } from '@/components/common/page-shell'
 import { StatusBadge } from '@/components/common/status-badge'
 import { TableCard, tableClassName, tdClassName, thClassName } from '@/components/common/table'
-import { useRole } from '@/hooks/use-role'
-import { formatDateTime } from '@/lib/format'
 import { getApiErrorMessage } from '@/services/api-client'
 import { deviceService } from '@/services/device-service'
+import { localAgentService } from '@/services/local-agent-service'
 import { protectedService } from '@/services/protected-service'
 import { useAuthStore } from '@/stores/auth-store'
 
-const inputClassName =
-  'ui-input'
 const buttonClassName =
   'ui-button-primary'
 
@@ -28,20 +24,25 @@ function sensitivityTone(sensitivity: string): 'success' | 'warning' | 'danger' 
 
 export function ProtectedFilesPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
-  const { canViewSecurityData } = useRole()
-  const [deviceId, setDeviceId] = useState('')
 
-  const devicesQuery = useQuery({
-    queryKey: ['protected-files', 'devices'],
-    queryFn: () => deviceService.list({ limit: 100 }),
-    enabled: canViewSecurityData,
+  const localAgentQuery = useQuery({
+    queryKey: ['local-agent', 'identity'],
+    queryFn: localAgentService.getIdentity,
+    retry: false,
+    refetchInterval: 30_000,
+  })
+
+  const localDeviceId = localAgentQuery.data?.device_id ?? null
+
+  const deviceQuery = useQuery({
+    queryKey: ['protected-files', 'current-device', localDeviceId],
+    queryFn: () => deviceService.getById(Number(localDeviceId)),
+    enabled: localDeviceId !== null,
   })
 
   const filesMutation = useMutation({
-    mutationFn: () => protectedService.getFiles(Number(deviceId)),
+    mutationFn: () => protectedService.getFiles(Number(localDeviceId)),
   })
-
-  const compliantDevices = devicesQuery.data?.devices.filter((device) => device.is_compliant) ?? []
 
   return (
     <PageShell
@@ -54,33 +55,43 @@ export function ProtectedFilesPage() {
       <section className="ui-panel">
         <h2 className="text-lg font-semibold text-zinc-950">Access request</h2>
         <p className="mt-2 text-zinc-600">
-          Select or enter a compliant device ID. The backend receives it as the X-Device-ID header.
+          This page uses the local ZT Agent to detect the current device. The backend still verifies MFA, role, ownership, and device compliance before granting access.
         </p>
 
-        <div className="mt-5 grid grid-cols-[1fr_auto] gap-3 max-sm:grid-cols-1">
-          {canViewSecurityData ? (
-            <select className={inputClassName} onChange={(event) => setDeviceId(event.target.value)} value={deviceId}>
-              <option value="">Select compliant device</option>
-              {compliantDevices.map((device) => (
-                <option key={device.id} value={device.id}>
-                  #{device.id} {device.hostname} — last seen {formatDateTime(device.last_seen)}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              className={inputClassName}
-              min="1"
-              onChange={(event) => setDeviceId(event.target.value)}
-              placeholder="Compliant device ID"
-              type="number"
-              value={deviceId}
-            />
+        <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+          <span className="text-sm font-medium text-zinc-700">Detected device</span>
+          {localAgentQuery.isLoading && <div className="mt-3"><LoadingState message="Detecting local ZT Agent..." /></div>}
+          {localAgentQuery.isError && (
+            <div className="mt-3">
+              <ErrorState message="ZT Agent was not detected on this device. Start the local agent and refresh this page." />
+            </div>
           )}
+          {localAgentQuery.data && localDeviceId === null && (
+            <div className="mt-3">
+              <ErrorState message="ZT Agent is running, but no backend device ID is configured." />
+            </div>
+          )}
+          {deviceQuery.isLoading && <div className="mt-3"><LoadingState message="Loading current device posture..." /></div>}
+          {deviceQuery.isError && <div className="mt-3"><ErrorState message={getApiErrorMessage(deviceQuery.error)} /></div>}
+          {deviceQuery.data && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <strong className="text-zinc-950">#{deviceQuery.data.id} {deviceQuery.data.hostname}</strong>
+                <p className="mt-1 text-sm text-zinc-600">
+                  {deviceQuery.data.os_type}{deviceQuery.data.os_version ? ` ${deviceQuery.data.os_version}` : ''}
+                </p>
+              </div>
+              <StatusBadge tone={deviceQuery.data.is_compliant ? 'success' : 'danger'}>
+                {deviceQuery.data.is_compliant ? 'Compliant' : 'Not compliant'}
+              </StatusBadge>
+            </div>
+          )}
+        </div>
 
+        <div className="mt-5 flex justify-end">
           <button
             className={buttonClassName}
-            disabled={filesMutation.isPending || !deviceId}
+            disabled={filesMutation.isPending || localDeviceId === null || !deviceQuery.data?.is_compliant}
             onClick={() => filesMutation.mutate()}
             type="button"
           >
@@ -88,8 +99,6 @@ export function ProtectedFilesPage() {
           </button>
         </div>
 
-        {canViewSecurityData && devicesQuery.isLoading && <div className="mt-4"><LoadingState message="Loading compliant devices..." /></div>}
-        {canViewSecurityData && devicesQuery.isError && <div className="mt-4"><ErrorState message={getApiErrorMessage(devicesQuery.error)} /></div>}
         {filesMutation.isError && <div className="mt-4"><ErrorState message={getApiErrorMessage(filesMutation.error)} /></div>}
       </section>
 

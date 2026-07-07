@@ -69,7 +69,7 @@ sudo uv run python -m src.main
 
 ```
 # backend
-uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload
+uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # frontend
 npm run dev
 # agent
