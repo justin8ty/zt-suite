@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { LoginForm } from '@/components/auth/login-form'
@@ -9,10 +9,39 @@ import { useAuthStore } from '@/stores/auth-store'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const setTokens = useAuthStore((state) => state.setTokens)
   const setMfaTempToken = useAuthStore((state) => state.setMfaTempToken)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRestoringSession, setIsRestoringSession] = useState(!isAuthenticated)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isActive = true
+
+    if (isAuthenticated) {
+      navigate(routes.dashboard, { replace: true })
+      return () => {
+        isActive = false
+      }
+    }
+
+    authService
+      .refresh()
+      .then((tokens) => {
+        if (!isActive) return
+        setTokens(tokens)
+        navigate(routes.dashboard, { replace: true })
+      })
+      .catch(() => {
+        if (!isActive) return
+        setIsRestoringSession(false)
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [isAuthenticated, navigate, setTokens])
 
   async function handleLogin(values: { email: string; password: string }) {
     setIsSubmitting(true)
@@ -34,6 +63,10 @@ export function LoginPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isRestoringSession) {
+    return <div className="grid min-h-screen place-items-center text-sm text-zinc-600">Restoring session...</div>
   }
 
   return (
