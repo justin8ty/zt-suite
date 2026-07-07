@@ -52,8 +52,8 @@ export function AppSidebar() {
   return (
     <aside className="sticky top-4 h-[calc(100vh-2rem)] rounded-2xl border border-zinc-950/10 bg-zinc-950 p-4 text-white shadow-[0_18px_60px_rgba(15,23,42,0.22)] max-lg:static max-lg:h-auto">
       <div className="mb-7 flex items-center gap-3 px-1">
-        <div className="grid size-10 place-items-center rounded-xl bg-white font-mono text-sm font-semibold text-zinc-950">
-          ZT
+        <div className="size-10 overflow-hidden rounded-xl bg-white">
+          <img alt="ZT Suite logo" className="size-full object-cover" src="/favicon.png" />
         </div>
         <div>
           <strong className="block text-sm font-semibold tracking-[-0.012em] text-white">ZT Suite</strong>
