@@ -132,6 +132,15 @@ nmap -sV -p 8080 192.168.211.130
 Configs:
 
 ```
+ssh ubuntu@192.168.211.130
+curl -LsSf https://astral.sh/uv/install.sh | sh
+sudo install -m 755 "$(which uv)" /usr/local/bin/uv
+
+sudo mkdir -p /mnt/hgfs
+sudo vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other
+ls /mnt/hgfs/Share
+cp -r /mnt/hgfs/Share/zt-suite ~/Downloads/zt-suite
+
 ZT_AGENT_BACKEND_URL=http://192.168.100.95:8000
 ZT_AGENT_DEVICE_ID=9
 ZT_AGENT_AGENT_TOKEN=ztag_5xITauDK06LMR9xd72jSSMcwRfbQx_1rorhFj4BDijo
