@@ -81,11 +81,7 @@ export function FlowsPage() {
       eyebrow="Flow IDS"
       title="Network Flows"
     >
-      <section className="grid grid-cols-3 gap-3.5 max-md:grid-cols-1">
-        <div className="ui-panel ui-card-hover">
-          <span className="text-sm text-zinc-600">Flows on page</span>
-          <strong className="mt-2 block text-3xl text-zinc-950">{flows.length}</strong>
-        </div>
+      <section className="grid grid-cols-2 gap-3.5 max-md:grid-cols-1">
         <div className="ui-panel ui-card-hover">
           <span className="text-sm text-zinc-600">Malicious predictions</span>
           <strong className="mt-2 block text-3xl text-zinc-950">{maliciousCount}</strong>
