@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
@@ -11,27 +11,16 @@ import { routes } from '@/lib/routes'
 import { getApiErrorMessage } from '@/services/api-client'
 import { deviceService } from '@/services/device-service'
 import type { AgentTokenIssued } from '@/types/device'
-import type { PostureReportCreate } from '@/types/posture'
 
-const checkboxClassName = 'size-4 accent-zinc-950'
 const buttonClassName =
   'ui-button-primary'
 
 export function DeviceDetailPage() {
-  const queryClient = useQueryClient()
   const params = useParams()
   const deviceId = Number(params.deviceId)
   const [tokenName, setTokenName] = useState('default agent')
   const [issuedToken, setIssuedToken] = useState<AgentTokenIssued | null>(null)
   const [copied, setCopied] = useState(false)
-  const [posture, setPosture] = useState<PostureReportCreate>({
-    antivirus_present: true,
-    antivirus_enabled: true,
-    firewall_enabled: true,
-    disk_encrypted: false,
-    os_up_to_date: true,
-  })
-
   const deviceQuery = useQuery({
     queryKey: ['devices', deviceId],
     queryFn: () => deviceService.getById(deviceId),
@@ -52,21 +41,6 @@ export function DeviceDetailPage() {
       setTokenName('default agent')
     },
   })
-
-  const submitPostureMutation = useMutation({
-    mutationFn: () => deviceService.submitPosture(deviceId, posture),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['devices'] }),
-        queryClient.invalidateQueries({ queryKey: ['devices', deviceId] }),
-        queryClient.invalidateQueries({ queryKey: ['devices', deviceId, 'posture'] }),
-      ])
-    },
-  })
-
-  function setPostureField(field: keyof PostureReportCreate, value: boolean) {
-    setPosture((current) => ({ ...current, [field]: value }))
-  }
 
   return (
     <PageShell
@@ -156,22 +130,6 @@ export function DeviceDetailPage() {
             {copied && <p className="mt-1 text-xs text-green-700">Copied</p>}
           </div>
         )}
-      </section>
-
-      <section className="ui-panel">
-        <h2 className="text-lg font-semibold text-zinc-950">Submit simulated posture</h2>
-        <div className="mt-5 grid grid-cols-5 gap-3 text-sm text-zinc-700 max-xl:grid-cols-2 max-sm:grid-cols-1">
-          {Object.entries(posture).map(([key, value]) => (
-            <label className="flex items-center gap-2" key={key}>
-              <input className={checkboxClassName} checked={value} onChange={(event) => setPostureField(key as keyof PostureReportCreate, event.target.checked)} type="checkbox" />
-              {key.replaceAll('_', ' ')}
-            </label>
-          ))}
-        </div>
-        <button className={`${buttonClassName} mt-5`} disabled={submitPostureMutation.isPending} onClick={() => submitPostureMutation.mutate()} type="button">
-          {submitPostureMutation.isPending ? 'Submitting...' : 'Submit posture'}
-        </button>
-        {submitPostureMutation.isError && <div className="mt-4"><ErrorState message={getApiErrorMessage(submitPostureMutation.error)} /></div>}
       </section>
     </PageShell>
   )

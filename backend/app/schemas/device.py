@@ -9,15 +9,15 @@ class DeviceBase(BaseModel):
     """Base device schema."""
 
     hostname: str
-    os_type: str
+    os_type: str = "unknown"
     os_version: str | None = None
     agent_version: str | None = None
 
 
 class DeviceCreate(DeviceBase):
-    """Schema for registering a device."""
+    """Schema for registering a device enrollment."""
 
-    pass
+    user_id: int | None = None
 
 
 class DeviceRead(DeviceBase):

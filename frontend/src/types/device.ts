@@ -16,7 +16,8 @@ export interface DeviceList {
 
 export interface DeviceCreate {
   hostname: string
-  os_type: string
+  user_id?: number | null
+  os_type?: string
   os_version?: string | null
   agent_version?: string | null
 }

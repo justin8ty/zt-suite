@@ -45,6 +45,10 @@ class ApiClient:
             "disk_encrypted": bool(report.security.disk_encryption_enabled),
             "os_up_to_date": os_up_to_date,
             "check_details": report.security.check_details,
+            "hostname": report.hostname,
+            "os_type": report.os_name.lower(),
+            "os_version": report.os_version,
+            "agent_version": report.agent_version,
         }
         self._post(f"/api/devices/{device_id}/posture", payload, "posture report")
 

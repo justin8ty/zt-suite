@@ -35,7 +35,16 @@ async def register_device(
     current_user: User = Depends(get_current_user),
 ) -> DeviceRead:
     """Register device."""
-    device = device_service.register(db, device_in, user_id=current_user.id)
+    owner_id = device_in.user_id or current_user.id
+    is_admin = any(r.name == RoleName.ADMIN for r in current_user.roles)
+    if owner_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can assign device ownership")
+
+    owner = db.get(User, owner_id)
+    if not owner:
+        raise HTTPException(status_code=404, detail="Owner user not found")
+
+    device = device_service.register(db, device_in, user_id=owner_id)
     return DeviceRead.model_validate(device)
 
 

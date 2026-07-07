@@ -64,6 +64,16 @@ class PostureService:
 
         db.add(report)
 
+        # Update device metadata from the agent's current posture report.
+        if report_in.hostname:
+            device.hostname = report_in.hostname
+        if report_in.os_type:
+            device.os_type = report_in.os_type
+        if report_in.os_version:
+            device.os_version = report_in.os_version
+        if report_in.agent_version:
+            device.agent_version = report_in.agent_version
+
         # Update device status
         device_service.update_compliance(db, device, is_compliant)
 

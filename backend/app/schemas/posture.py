@@ -19,6 +19,10 @@ class PostureReportCreate(PostureReportBase):
     """Schema for submitting a posture report."""
 
     check_details: dict[str, str] | None = None
+    hostname: str | None = None
+    os_type: str | None = None
+    os_version: str | None = None
+    agent_version: str | None = None
 
 
 class PostureReportRead(PostureReportBase):

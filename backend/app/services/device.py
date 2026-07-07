@@ -57,12 +57,11 @@ class DeviceService:
         device = DeviceService.get_by_hostname(db, device_in.hostname)
 
         if device:
-            # Update existing
-            device.os_type = device_in.os_type
-            device.os_version = device_in.os_version
-            device.agent_version = device_in.agent_version
-            device.last_seen = datetime.now(timezone.utc)
-            if user_id and not device.user_id:
+            # Update existing. Agent-reported metadata may arrive later via posture.
+            device.os_type = device_in.os_type or device.os_type
+            device.os_version = device_in.os_version or device.os_version
+            device.agent_version = device_in.agent_version or device.agent_version
+            if user_id is not None:
                 device.user_id = user_id
         else:
             # Create new
