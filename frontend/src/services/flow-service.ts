@@ -2,6 +2,14 @@ import { apiClient } from '@/services/api-client'
 import type { NetworkFlow } from '@/types/flow'
 
 export const flowService = {
+  async count(params?: {
+    device_id?: number
+    prediction?: number
+  }): Promise<{ total: number }> {
+    const response = await apiClient.get<{ total: number }>('/api/flows/count', { params })
+    return response.data
+  },
+
   async list(params?: {
     skip?: number
     limit?: number

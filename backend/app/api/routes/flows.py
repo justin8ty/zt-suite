@@ -37,6 +37,21 @@ async def ingest_flows(
 
 
 @router.get(
+    "/count",
+    dependencies=[Depends(require_roles(RoleName.ADMIN, RoleName.VIEWER))],
+    summary="Count scored network flows",
+    description="Get the total number of CICFlowMeter-derived flow records. Admin/Viewer only.",
+)
+async def count_flows(
+    db: DbSession,
+    device_id: int | None = None,
+    prediction: int | None = None,
+) -> dict[str, int]:
+    """Count scored network flows."""
+    return {"total": network_flow_service.count_flows(db, device_id, prediction)}
+
+
+@router.get(
     "",
     response_model=list[NetworkFlowRead],
     dependencies=[Depends(require_roles(RoleName.ADMIN, RoleName.VIEWER))],

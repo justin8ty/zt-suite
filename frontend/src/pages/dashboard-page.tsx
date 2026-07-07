@@ -5,8 +5,8 @@ import { MetricCard } from '@/components/dashboard/metric-card'
 import { useRole } from '@/hooks/use-role'
 import { alertService } from '@/services/alert-service'
 import { deviceService } from '@/services/device-service'
+import { flowService } from '@/services/flow-service'
 import { logService } from '@/services/log-service'
-import { trafficService } from '@/services/traffic-service'
 import { useAuthStore } from '@/stores/auth-store'
 
 const DASHBOARD_REFETCH_MS = 10_000
@@ -139,9 +139,9 @@ export function DashboardPage() {
     refetchInterval: DASHBOARD_REFETCH_MS,
   })
 
-  const trafficQuery = useQuery({
-    queryKey: ['dashboard', 'traffic'],
-    queryFn: () => trafficService.list({ limit: 100 }),
+  const flowsCountQuery = useQuery({
+    queryKey: ['dashboard', 'flows-count'],
+    queryFn: () => flowService.count(),
     enabled: canViewSecurityData,
     refetchInterval: DASHBOARD_REFETCH_MS,
   })
@@ -155,7 +155,7 @@ export function DashboardPage() {
 
   const devices = devicesQuery.data?.devices ?? []
   const alerts = openAlertsQuery.data ?? []
-  const traffic = trafficQuery.data ?? []
+  const flowsCount = flowsCountQuery.data?.total ?? 0
   const logs = logsQuery.data?.logs ?? []
 
   const compliantDevices = devices.filter((device) => device.is_compliant).length
@@ -200,10 +200,10 @@ export function DashboardPage() {
           value={canViewSecurityData ? alerts.length : 'Restricted'}
         />
         <MetricCard
-          helper={canViewSecurityData ? 'Latest metadata records' : 'Admin/viewer only'}
-          label="Recent traffic"
+          helper={canViewSecurityData ? 'Latest scored flows' : 'Admin/viewer only'}
+          label="Recent flows"
           tone="default"
-          value={canViewSecurityData ? traffic.length : 'Restricted'}
+          value={canViewSecurityData ? flowsCount : 'Restricted'}
         />
         <MetricCard
           helper={isAdmin ? 'From latest audit log page' : 'Admin only'}

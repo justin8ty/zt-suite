@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.models.flow import NetworkFlow
@@ -34,6 +34,20 @@ class NetworkFlowService:
         db.bulk_insert_mappings(NetworkFlow, records_data)
         db.commit()
         return len(records_data)
+
+    @staticmethod
+    def count_flows(
+        db: Session,
+        device_id: int | None = None,
+        prediction: int | None = None,
+    ) -> int:
+        """Count scored network flows."""
+        query = select(func.count()).select_from(NetworkFlow)
+        if device_id:
+            query = query.where(NetworkFlow.device_id == device_id)
+        if prediction is not None:
+            query = query.where(NetworkFlow.prediction == prediction)
+        return db.execute(query).scalar() or 0
 
     @staticmethod
     def get_flows(
